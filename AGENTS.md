@@ -57,6 +57,20 @@ Do not invent API behavior outside those sources.
 - Approved baseline dependencies:
   - `clap = { version = "4.5.58", features = ["derive"] }`
   - `colored = "3.0.0"`
+- Approved Stage 1 auth dependencies:
+  - `oauth2 = { version = "5", default-features = false, features = ["reqwest", "rustls-tls"] }`
+  - `reqwest = { version = "0.12.24", default-features = false, features = ["json", "rustls-tls"] }`
+  - `tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread"] }`
+  - `serde = { version = "1.0.228", features = ["derive"] }`
+  - `serde_json = "1.0.145"`
+  - `url = "2.5.7"`
+  - `dialoguer = "0.12.0"`
+- Approved Stage 1 auth secret-storage dependencies:
+  - `keyring = { version = "3.6.3", default-features = false, features = ["crypto-rust"] }`
+  - `age = "0.11.2"`
+  - `rand = "0.10.0"`
+  - `sha2 = "0.10.9"`
+  - `base64 = "0.22.1"`
 
 ## Style Alignment with codex-rs
 
