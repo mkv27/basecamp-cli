@@ -117,10 +117,11 @@ Model:
   - no pluggable backend system for now
   - no extra abstraction beyond what auth commands need
 
-Linux + macOS behavior:
+Linux + macOS + Windows behavior:
 
 - macOS: keyring backend uses Apple Keychain.
 - Linux: keyring backend uses native Secret Service integration.
+- Windows: keyring backend uses Windows Credential Manager (`windows-native`).
 - Secret operations require keyring availability.
 
 No runtime fallback:
@@ -133,10 +134,14 @@ Project path plan:
 - Secret file path should be under app config root:
   - `${BASECAMP_CLI_CONFIG_DIR}/secrets/local.age`, or
   - `${XDG_CONFIG_HOME:-~/.config}/basecamp-cli/secrets/local.age`
+  - Windows default: `%APPDATA%\\basecamp-cli\\secrets\\local.age` (fallback `%LOCALAPPDATA%\\basecamp-cli\\secrets\\local.age`)
 - Non-secrets remain in JSON config file.
 - Unix permissions:
   - secret dir `0700`
   - secret file `0600`
+- Windows permissions:
+  - rely on user profile ACL defaults for `%APPDATA%`/`%LOCALAPPDATA%`
+  - no Unix mode bits are applied on Windows
 
 ## Storage Location Logging (Required)
 
@@ -176,6 +181,7 @@ Target-specific features (codex-rs aligned):
 
 - Linux: `linux-native-async-persistent`
 - macOS: `apple-native`
+- Windows: `windows-native`
 
 ## Testing Strategy (Simple)
 

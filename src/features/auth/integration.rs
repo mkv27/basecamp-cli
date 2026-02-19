@@ -249,6 +249,16 @@ fn config_dir() -> AppResult<PathBuf> {
         return Ok(PathBuf::from(path));
     }
 
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(path) = env::var("APPDATA") {
+            return Ok(PathBuf::from(path).join(APP_NAME));
+        }
+        if let Ok(path) = env::var("LOCALAPPDATA") {
+            return Ok(PathBuf::from(path).join(APP_NAME));
+        }
+    }
+
     if let Ok(path) = env::var("XDG_CONFIG_HOME") {
         return Ok(PathBuf::from(path).join(APP_NAME));
     }
