@@ -106,6 +106,12 @@ pub enum TodoCommand {
 pub struct TodoAddArgs {
     /// To-do title/content. If omitted, prompt interactively.
     pub content: Option<String>,
+    /// Optional notes/description for the to-do.
+    #[arg(long)]
+    pub notes: Option<String>,
+    /// Optional due date in YYYY-MM-DD format.
+    #[arg(long)]
+    pub due_on: Option<String>,
     #[arg(long)]
     pub json: bool,
 }

@@ -150,7 +150,7 @@ pub async fn run(args: TodoAddArgs) -> AppResult<TodoAddOutput> {
     }
 
     let content = resolve_content(args.content)?;
-    let notes = prompt_optional_text("Notes (optional)")?;
+    let notes = resolve_notes(args.notes)?;
     let people = resolve_optional_people(
         fetch_project_people(
             &client,
@@ -162,7 +162,7 @@ pub async fn run(args: TodoAddArgs) -> AppResult<TodoAddOutput> {
     );
     let assignee_id = prompt_assignee(people.as_deref())?;
     let completion_subscriber_ids = prompt_completion_subscribers(people.as_deref())?;
-    let due_on = prompt_due_on()?;
+    let due_on = resolve_due_on(args.due_on)?;
 
     let created_todo = create_todo(
         &client,
@@ -419,6 +419,27 @@ fn resolve_content(positional_content: Option<String>) -> AppResult<String> {
 
     normalize_optional(Some(content))
         .ok_or_else(|| AppError::invalid_input("Title/content is required."))
+}
+
+fn resolve_notes(flag_notes: Option<String>) -> AppResult<Option<String>> {
+    if let Some(value) = flag_notes {
+        return Ok(normalize_optional(Some(value)));
+    }
+
+    prompt_optional_text("Notes (optional)")
+}
+
+fn resolve_due_on(flag_due_on: Option<String>) -> AppResult<Option<String>> {
+    if let Some(value) = flag_due_on {
+        if let Some(trimmed) = normalize_optional(Some(value)) {
+            validate_due_date(&trimmed)?;
+            return Ok(Some(trimmed));
+        }
+
+        return Ok(None);
+    }
+
+    prompt_due_on()
 }
 
 fn prompt_optional_text(prompt: &str) -> AppResult<Option<String>> {

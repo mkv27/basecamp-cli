@@ -64,10 +64,10 @@ Search:
 Useful to-do fields/params for this CLI:
 
 - `content` (required title)
-- `description` (CLI prompt label: `notes`)
+- `description` (CLI: `--notes` or interactive `notes` prompt)
 - `assignee_ids` (optional)
 - `completion_subscriber_ids` (optional multi-user "When done, notify")
-- `due_on` (optional date)
+- `due_on` (CLI: `--due-on` or interactive prompt; optional `YYYY-MM-DD` date)
 - `completed=true` (optional query param on list endpoint when fetching only completed items)
 - `q` (required query string for `/search.json`)
 - `type=Todo` (search filter for to-do results)
@@ -82,4 +82,5 @@ Useful to-do fields/params for this CLI:
 - Completion routing requires `project_id` and `todo_id` in the URL path; there is no project-agnostic complete endpoint.
 - For text search completion UX, use account-level `GET /search.json` with `type=Todo`.
 - To scope search to one project, include `bucket_id={project_id}` in `/search.json`.
+- Map CLI `--notes` to Basecamp `description`, and CLI `--due-on` to Basecamp `due_on`.
 - There is no documented fuzzy-search toggle/parameter; rely on `/search.json` query behavior and relevance ordering.
