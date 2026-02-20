@@ -51,18 +51,35 @@ To-dos:
 - `POST /buckets/{project_id}/todolists/{todolist_id}/todos.json`
 - `GET /buckets/{project_id}/todos/{todo_id}.json`
 - `PUT /buckets/{project_id}/todos/{todo_id}.json`
+- `POST /buckets/{project_id}/todos/{todo_id}/completion.json`
+- `DELETE /buckets/{project_id}/todos/{todo_id}/completion.json`
 - `TRASH /buckets/{project_id}/todos/{todo_id}.json`
 
-Useful create fields for this CLI:
+Search:
+
+- `GET /searches/metadata.json`
+- `GET /search.json?q={query}&type=Todo`
+- `GET /search.json?q={query}&type=Todo&bucket_id={project_id}`
+
+Useful to-do fields/params for this CLI:
 
 - `content` (required title)
 - `description` (CLI prompt label: `notes`)
 - `assignee_ids` (optional)
 - `completion_subscriber_ids` (optional multi-user "When done, notify")
 - `due_on` (optional date)
+- `completed=true` (optional query param on list endpoint when fetching only completed items)
+- `q` (required query string for `/search.json`)
+- `type=Todo` (search filter for to-do results)
+- `bucket_id` (optional project scope for `/search.json`)
 
 ## Implementation Guidance for This CLI
 
 - Treat `todoset_id` as a required routing value discovered from the project `dock`.
 - Treat both top-level lists and groups as list-like entities (`Todolist`) but keep separate CLI commands for clarity.
 - Keep to-dos as the only task entity users can complete/uncomplete.
+- For completion, use `POST /buckets/{project_id}/todos/{todo_id}/completion.json` (not `PUT /todos/{todo_id}.json`).
+- Completion routing requires `project_id` and `todo_id` in the URL path; there is no project-agnostic complete endpoint.
+- For text search completion UX, use account-level `GET /search.json` with `type=Todo`.
+- To scope search to one project, include `bucket_id={project_id}` in `/search.json`.
+- There is no documented fuzzy-search toggle/parameter; rely on `/search.json` query behavior and relevance ordering.

@@ -10,11 +10,11 @@ use std::io::{self, IsTerminal};
 
 use crate::cli::{
     Cli, Command, IntegrationArgs, IntegrationClearArgs, IntegrationCommand, IntegrationSetArgs,
-    LoginArgs, LogoutArgs, TodoAddArgs, TodoArgs, TodoCommand, WhoamiArgs,
+    LoginArgs, LogoutArgs, TodoAddArgs, TodoArgs, TodoCommand, TodoCompleteArgs, WhoamiArgs,
 };
 use crate::error::{AppError, AppResult};
 use crate::features::auth::{integration, login, logout, whoami};
-use crate::features::todos::add as todo_add;
+use crate::features::todos::{add as todo_add, complete as todo_complete};
 use crate::ui::prompt_theme;
 
 const DEFAULT_REDIRECT_URI: &str = "http://127.0.0.1:45455/callback";
@@ -181,6 +181,7 @@ async fn handle_whoami(args: WhoamiArgs) -> AppResult<()> {
 async fn handle_todo(args: TodoArgs) -> AppResult<()> {
     match args.command {
         TodoCommand::Add(args) => handle_todo_add(args).await,
+        TodoCommand::Complete(args) => handle_todo_complete(args).await,
     }
 }
 
@@ -204,6 +205,54 @@ async fn handle_todo_add(args: TodoAddArgs) -> AppResult<()> {
         output.todolist_name,
         format!("(id: {})", output.todo_id).bright_black()
     );
+
+    Ok(())
+}
+
+async fn handle_todo_complete(args: TodoCompleteArgs) -> AppResult<()> {
+    integration::print_secret_store_location()?;
+    let json_output = args.json;
+    let output = todo_complete::run(args).await?;
+
+    if json_output {
+        let rendered = serde_json::to_string_pretty(&output)
+            .map_err(|err| AppError::generic(format!("Failed to render JSON output: {err}")))?;
+        println!("{rendered}");
+        return Ok(());
+    }
+
+    if output.count == 1 {
+        let completed = output
+            .completed
+            .first()
+            .ok_or_else(|| AppError::generic("Missing completed to-do output item."))?;
+        let metadata = format!(
+            "(id: {}, project: {})",
+            completed.todo_id, completed.project_id
+        )
+        .bright_black();
+        println!("{} {}.", "Completed todo".green(), metadata);
+        return Ok(());
+    }
+
+    let completed_label = format!("{} todos", output.count);
+    println!("{} {}:", "Completed".green(), completed_label);
+    for item in &output.completed {
+        let title = item
+            .content
+            .clone()
+            .unwrap_or_else(|| format!("Todo {}", item.todo_id));
+        let metadata = match item.project_name.as_deref() {
+            Some(project_name) => {
+                format!(
+                    "(id: {}, project: {} / {})",
+                    item.todo_id, project_name, item.project_id
+                )
+            }
+            None => format!("(id: {}, project: {})", item.todo_id, item.project_id),
+        };
+        println!("  - {} {}", title, metadata.bright_black());
+    }
 
     Ok(())
 }
