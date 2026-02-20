@@ -7,7 +7,7 @@ Small Basecamp CLI written in Rust.
 ### macOS / Linux (latest)
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/mkv27/basecamp-cli/main/install.sh)"
+curl -fsSL https://raw.githubusercontent.com/mkv27/basecamp-cli/main/install.sh | sh
 ```
 
 ### Windows PowerShell (latest)
