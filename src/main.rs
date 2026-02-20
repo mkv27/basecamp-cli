@@ -34,34 +34,35 @@ async fn main() {
 
 async fn run() -> AppResult<()> {
     let cli = Cli::parse();
+    let verbose = cli.verbose;
 
     match cli.command {
-        Command::Integration(args) => handle_integration(args),
+        Command::Integration(args) => handle_integration(args, verbose),
         Command::Login(args) => handle_login(args).await,
-        Command::Logout(args) => handle_logout(args),
-        Command::Whoami(args) => handle_whoami(args).await,
-        Command::Todo(args) => handle_todo(args).await,
+        Command::Logout(args) => handle_logout(args, verbose),
+        Command::Whoami(args) => handle_whoami(args, verbose).await,
+        Command::Todo(args) => handle_todo(args, verbose).await,
     }
 }
 
-fn handle_integration(args: IntegrationArgs) -> AppResult<()> {
+fn handle_integration(args: IntegrationArgs, verbose: bool) -> AppResult<()> {
     match args.command {
         IntegrationCommand::Set(args) => handle_integration_set(args),
-        IntegrationCommand::Show => handle_integration_show(),
-        IntegrationCommand::Clear(args) => handle_integration_clear(args),
+        IntegrationCommand::Show => handle_integration_show(verbose),
+        IntegrationCommand::Clear(args) => handle_integration_clear(args, verbose),
     }
 }
 
 fn handle_integration_set(args: IntegrationSetArgs) -> AppResult<()> {
     let values = resolve_integration_set_values(args)?;
-    integration::print_secret_store_location()?;
     integration::set_integration(values.client_id, values.client_secret, values.redirect_uri)?;
     println!("{}", "Integration credentials saved.".green());
+    integration::print_secret_store_location()?;
     Ok(())
 }
 
-fn handle_integration_show() -> AppResult<()> {
-    integration::print_secret_store_location()?;
+fn handle_integration_show(verbose: bool) -> AppResult<()> {
+    print_secret_store_location_if_verbose(verbose)?;
     let status = integration::show_integration()?;
 
     println!(
@@ -99,8 +100,8 @@ fn handle_integration_show() -> AppResult<()> {
     Ok(())
 }
 
-fn handle_integration_clear(args: IntegrationClearArgs) -> AppResult<()> {
-    integration::print_secret_store_location()?;
+fn handle_integration_clear(args: IntegrationClearArgs, verbose: bool) -> AppResult<()> {
+    print_secret_store_location_if_verbose(verbose)?;
     if !args.force && !confirm("Clear integration credentials and local session? [y/N]")? {
         println!("Cancelled.");
         return Ok(());
@@ -112,7 +113,6 @@ fn handle_integration_clear(args: IntegrationClearArgs) -> AppResult<()> {
 }
 
 async fn handle_login(args: LoginArgs) -> AppResult<()> {
-    integration::print_secret_store_location()?;
     let json_output = args.json;
     let output = login::run(args).await?;
 
@@ -127,11 +127,12 @@ async fn handle_login(args: LoginArgs) -> AppResult<()> {
         );
     }
 
+    integration::print_secret_store_location()?;
     Ok(())
 }
 
-fn handle_logout(args: LogoutArgs) -> AppResult<()> {
-    integration::print_secret_store_location()?;
+fn handle_logout(args: LogoutArgs, verbose: bool) -> AppResult<()> {
+    print_secret_store_location_if_verbose(verbose)?;
     let json_output = args.json;
     let output = logout::run(args)?;
 
@@ -146,8 +147,8 @@ fn handle_logout(args: LogoutArgs) -> AppResult<()> {
     Ok(())
 }
 
-async fn handle_whoami(args: WhoamiArgs) -> AppResult<()> {
-    integration::print_secret_store_location()?;
+async fn handle_whoami(args: WhoamiArgs, verbose: bool) -> AppResult<()> {
+    print_secret_store_location_if_verbose(verbose)?;
     let output = whoami::run().await?;
 
     if args.json {
@@ -178,15 +179,15 @@ async fn handle_whoami(args: WhoamiArgs) -> AppResult<()> {
     Ok(())
 }
 
-async fn handle_todo(args: TodoArgs) -> AppResult<()> {
+async fn handle_todo(args: TodoArgs, verbose: bool) -> AppResult<()> {
     match args.command {
-        TodoCommand::Add(args) => handle_todo_add(args).await,
-        TodoCommand::Complete(args) => handle_todo_complete(args).await,
+        TodoCommand::Add(args) => handle_todo_add(args, verbose).await,
+        TodoCommand::Complete(args) => handle_todo_complete(args, verbose).await,
     }
 }
 
-async fn handle_todo_add(args: TodoAddArgs) -> AppResult<()> {
-    integration::print_secret_store_location()?;
+async fn handle_todo_add(args: TodoAddArgs, verbose: bool) -> AppResult<()> {
+    print_secret_store_location_if_verbose(verbose)?;
     let json_output = args.json;
     let output = todo_add::run(args).await?;
 
@@ -209,8 +210,8 @@ async fn handle_todo_add(args: TodoAddArgs) -> AppResult<()> {
     Ok(())
 }
 
-async fn handle_todo_complete(args: TodoCompleteArgs) -> AppResult<()> {
-    integration::print_secret_store_location()?;
+async fn handle_todo_complete(args: TodoCompleteArgs, verbose: bool) -> AppResult<()> {
+    print_secret_store_location_if_verbose(verbose)?;
     let json_output = args.json;
     let output = todo_complete::run(args).await?;
 
@@ -254,6 +255,13 @@ async fn handle_todo_complete(args: TodoCompleteArgs) -> AppResult<()> {
         println!("  - {} {}", title, metadata.bright_black());
     }
 
+    Ok(())
+}
+
+fn print_secret_store_location_if_verbose(verbose: bool) -> AppResult<()> {
+    if verbose {
+        integration::print_secret_store_location()?;
+    }
     Ok(())
 }
 

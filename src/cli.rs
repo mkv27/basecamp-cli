@@ -8,6 +8,9 @@ use clap::{Args, Parser, Subcommand};
     about = "Basecamp CLI"
 )]
 pub struct Cli {
+    #[arg(long, global = true)]
+    pub verbose: bool,
+
     #[command(subcommand)]
     pub command: Command,
 }
