@@ -40,6 +40,41 @@ function Resolve-Repo {
   return $DefaultRepo
 }
 
+function Get-ExpectedAssetHashFromReleaseDigest {
+  param(
+    [string]$RepoName,
+    [string]$ReleaseVersion,
+    [string]$AssetName
+  )
+
+  $releaseApiUrl = if ($ReleaseVersion -eq "latest") {
+    "https://api.github.com/repos/$RepoName/releases/latest"
+  } else {
+    "https://api.github.com/repos/$RepoName/releases/tags/$ReleaseVersion"
+  }
+
+  try {
+    $release = Invoke-RestMethod -Uri $releaseApiUrl -Headers @{
+      Accept = "application/vnd.github+json"
+      "X-GitHub-Api-Version" = "2022-11-28"
+    }
+  }
+  catch {
+    return $null
+  }
+
+  $asset = $release.assets | Where-Object { $_.name -eq $AssetName } | Select-Object -First 1
+  if (-not $asset -or -not $asset.digest) {
+    return $null
+  }
+
+  if ($asset.digest -match '^sha256:(?<hash>[A-Fa-f0-9]{64})$') {
+    return $Matches.hash.ToLowerInvariant()
+  }
+
+  return $null
+}
+
 $Repo = Resolve-Repo
 
 if ($env:PROCESSOR_ARCHITECTURE -ne "AMD64" -and $env:PROCESSOR_ARCHITEW6432 -ne "AMD64") {
@@ -63,21 +98,25 @@ try {
 
   Write-Host "Downloading $Asset from $Repo ($Version)..."
   Invoke-WebRequest -Uri $Url -OutFile $ArchivePath
-  Write-Host "Downloading $ChecksumsAsset..."
-  Invoke-WebRequest -Uri $ChecksumsUrl -OutFile $ChecksumsPath
+  $expectedHash = Get-ExpectedAssetHashFromReleaseDigest -RepoName $Repo -ReleaseVersion $Version -AssetName $Asset
+  if ($expectedHash) {
+    Write-Host "Using GitHub release asset digest for verification."
+  } else {
+    Write-Host "GitHub release digest unavailable; downloading $ChecksumsAsset..."
+    Invoke-WebRequest -Uri $ChecksumsUrl -OutFile $ChecksumsPath
 
-  $expectedHash = $null
-  Get-Content $ChecksumsPath | ForEach-Object {
-    if ($_ -match '^(?<hash>[A-Fa-f0-9]{64})\s+\*?(?<name>.+)$') {
-      $name = $Matches.name.Trim()
-      if ($name -eq $Asset -and -not $expectedHash) {
-        $expectedHash = $Matches.hash.ToLowerInvariant()
+    Get-Content $ChecksumsPath | ForEach-Object {
+      if ($_ -match '^(?<hash>[A-Fa-f0-9]{64})\s+\*?(?<name>.+)$') {
+        $name = $Matches.name.Trim()
+        if ($name -eq $Asset -and -not $expectedHash) {
+          $expectedHash = $Matches.hash.ToLowerInvariant()
+        }
       }
     }
-  }
 
-  if (-not $expectedHash) {
-    throw "Checksum for $Asset was not found in $ChecksumsAsset."
+    if (-not $expectedHash) {
+      throw "Checksum for $Asset was not found in $ChecksumsAsset."
+    }
   }
 
   $actualHash = (Get-FileHash -Algorithm SHA256 -Path $ArchivePath).Hash.ToLowerInvariant()

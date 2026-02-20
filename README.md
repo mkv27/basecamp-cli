@@ -50,7 +50,7 @@ irm https://raw.githubusercontent.com/mkv27/basecamp-cli/main/install.ps1 | iex
 basecamp-cli --help
 ```
 
-Installers validate downloaded release archives against `SHA256SUMS` before extraction.
+Installers validate downloaded release archives against GitHub release asset digests (`sha256`) before extraction, with `SHA256SUMS` as a fallback.
 
 ## Install path defaults
 

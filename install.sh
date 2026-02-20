@@ -93,8 +93,10 @@ CHECKSUMS_ASSET="SHA256SUMS"
 
 if [ "${VERSION}" = "latest" ]; then
   URL_BASE="https://github.com/${REPO}/releases/latest/download"
+  RELEASE_API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 else
   URL_BASE="https://github.com/${REPO}/releases/download/${VERSION}"
+  RELEASE_API_URL="https://api.github.com/repos/${REPO}/releases/tags/${VERSION}"
 fi
 
 TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t basecamp-cli)"
@@ -122,6 +124,28 @@ download_file() {
 
   echo "Error: curl or wget is required to download release assets." >&2
   exit 1
+}
+
+download_api_json() {
+  url="$1"
+
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL \
+      -H "Accept: application/vnd.github+json" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      "${url}"
+    return
+  fi
+
+  if command -v wget >/dev/null 2>&1; then
+    wget -qO- \
+      --header="Accept: application/vnd.github+json" \
+      --header="X-GitHub-Api-Version: 2022-11-28" \
+      "${url}"
+    return
+  fi
+
+  return 1
 }
 
 sha256_of_file() {
@@ -152,18 +176,53 @@ expected_sha256_for_asset() {
   awk -v f="${asset}" '$2 == f || $2 == ("*" f) { print $1; exit }' "${checksums_file}"
 }
 
+expected_sha256_from_release_digest() {
+  asset="$1"
+  api_url="$2"
+
+  if ! release_json="$(download_api_json "${api_url}" 2>/dev/null)"; then
+    return 1
+  fi
+
+  digest="$(
+    printf '%s' "${release_json}" \
+      | tr -d '\n\r\t ' \
+      | sed 's/},{/}\n{/g' \
+      | awk -v a="${asset}" '
+          index($0, "\"name\":\"" a "\"") > 0 {
+            if (match($0, /"digest":"sha256:[A-Fa-f0-9]+"/)) {
+              digest = substr($0, RSTART, RLENGTH)
+              sub(/"digest":"sha256:/, "", digest)
+              sub(/"$/, "", digest)
+              print tolower(digest)
+              exit
+            }
+          }
+        '
+  )"
+
+  if [ -z "${digest}" ] || [ "${#digest}" -ne 64 ]; then
+    return 1
+  fi
+
+  printf '%s\n' "${digest}"
+}
+
 ASSET_URL="${URL_BASE}/${ASSET}"
 CHECKSUMS_URL="${URL_BASE}/${CHECKSUMS_ASSET}"
 
 echo "Downloading ${ASSET} from ${REPO} (${VERSION})..."
 download_file "${ASSET_URL}" "${ARCHIVE_PATH}"
-echo "Downloading ${CHECKSUMS_ASSET}..."
-download_file "${CHECKSUMS_URL}" "${CHECKSUMS_PATH}"
-
-EXPECTED_SHA256="$(expected_sha256_for_asset "${ASSET}" "${CHECKSUMS_PATH}")"
-if [ -z "${EXPECTED_SHA256}" ]; then
-  echo "Error: ${ASSET} checksum not found in ${CHECKSUMS_ASSET}." >&2
-  exit 1
+if EXPECTED_SHA256="$(expected_sha256_from_release_digest "${ASSET}" "${RELEASE_API_URL}")"; then
+  echo "Using GitHub release asset digest for verification."
+else
+  echo "GitHub release digest unavailable; downloading ${CHECKSUMS_ASSET}..."
+  download_file "${CHECKSUMS_URL}" "${CHECKSUMS_PATH}"
+  EXPECTED_SHA256="$(expected_sha256_for_asset "${ASSET}" "${CHECKSUMS_PATH}")"
+  if [ -z "${EXPECTED_SHA256}" ]; then
+    echo "Error: ${ASSET} checksum not found in ${CHECKSUMS_ASSET}." >&2
+    exit 1
+  fi
 fi
 
 ACTUAL_SHA256="$(sha256_of_file "${ARCHIVE_PATH}")"

@@ -58,7 +58,7 @@ Asset naming convention:
 
 Also publish:
 
-- `SHA256SUMS`
+- `SHA256SUMS` (compatibility fallback for installer verification)
 
 ## Installer Contract
 
@@ -67,16 +67,16 @@ Also publish:
 - detects OS/arch
 - resolves target triple
 - downloads from GitHub Releases (`latest` or explicit version)
-- downloads `SHA256SUMS` from the same release
-- verifies SHA-256 hash before extraction/install
+- verifies SHA-256 via GitHub release asset `digest` API field
+- falls back to `SHA256SUMS` from the same release if digest lookup is unavailable
 - extracts binary and installs to `${BASECAMP_CLI_INSTALL_DIR:-$HOME/.local/bin}`
 
 `install.ps1`:
 
 - targets Windows x86_64
 - downloads from GitHub Releases (`latest` or explicit version)
-- downloads `SHA256SUMS` from the same release
-- verifies SHA-256 hash before extraction/install
+- verifies SHA-256 via GitHub release asset `digest` API field
+- falls back to `SHA256SUMS` from the same release if digest lookup is unavailable
 - extracts binary and installs to `%LOCALAPPDATA%\Programs\basecamp-cli\bin` by default
 
 Common env overrides:

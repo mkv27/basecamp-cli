@@ -116,7 +116,19 @@ jobs:
           mkdir -p release
           find dist -maxdepth 3 -type f -exec cp {} release/ \;
           cd release
-          sha256sum * > SHA256SUMS
+          found=0
+          : > SHA256SUMS
+          for file in ${BIN_NAME}-*; do
+            if [ -f "${file}" ]; then
+              sha256sum "${file}" >> SHA256SUMS
+              found=1
+            fi
+          done
+          if [ "${found}" -ne 1 ]; then
+            echo "No packaged release assets were found."
+            exit 1
+          fi
+          sort -o SHA256SUMS SHA256SUMS
 
       - name: Create GitHub release and upload assets
         shell: bash
@@ -130,3 +142,52 @@ jobs:
           else
             gh release create "${TAG}" release/* --repo "${GITHUB_REPOSITORY}" --verify-tag --generate-notes
           fi
+
+      - name: Verify uploaded asset digests
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          cd release
+
+          verified_any=0
+          for file in ${BIN_NAME}-*; do
+            if [ ! -f "${file}" ]; then
+              continue
+            fi
+
+            verified_any=1
+            LOCAL_SHA256="$(sha256sum "${file}" | awk '{print $1}')"
+            REMOTE_DIGEST="$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" \
+              --jq ".assets[] | select(.name == \"${file}\") | .digest" | head -n1 || true)"
+
+            if [ -z "${REMOTE_DIGEST}" ]; then
+              echo "Missing digest for uploaded asset: ${file}"
+              exit 1
+            fi
+
+            REMOTE_SHA256="${REMOTE_DIGEST#sha256:}"
+            if [ "${REMOTE_SHA256}" = "${REMOTE_DIGEST}" ]; then
+              echo "Unexpected digest format for ${file}: ${REMOTE_DIGEST}"
+              exit 1
+            fi
+
+            if [ "${LOCAL_SHA256}" != "${REMOTE_SHA256}" ]; then
+              echo "Digest mismatch for ${file}"
+              echo "Local:  ${LOCAL_SHA256}"
+              echo "Remote: ${REMOTE_SHA256}"
+              exit 1
+            fi
+          done
+
+          if [ "${verified_any}" -ne 1 ]; then
+            echo "No packaged release assets were verified."
+            exit 1
+          fi
+
+          echo "GitHub release asset digests match local SHA-256 values."
