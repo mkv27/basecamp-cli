@@ -1,6 +1,7 @@
 mod cli;
 mod error;
 mod features;
+mod ui;
 
 use clap::Parser;
 use colored::Colorize;
@@ -9,10 +10,12 @@ use std::io::{self, IsTerminal};
 
 use crate::cli::{
     Cli, Command, IntegrationArgs, IntegrationClearArgs, IntegrationCommand, IntegrationSetArgs,
-    LoginArgs, LogoutArgs, WhoamiArgs,
+    LoginArgs, LogoutArgs, TodoAddArgs, TodoArgs, TodoCommand, WhoamiArgs,
 };
 use crate::error::{AppError, AppResult};
 use crate::features::auth::{integration, login, logout, whoami};
+use crate::features::todos::add as todo_add;
+use crate::ui::prompt_theme;
 
 const DEFAULT_REDIRECT_URI: &str = "http://127.0.0.1:45455/callback";
 
@@ -37,6 +40,7 @@ async fn run() -> AppResult<()> {
         Command::Login(args) => handle_login(args).await,
         Command::Logout(args) => handle_logout(args),
         Command::Whoami(args) => handle_whoami(args).await,
+        Command::Todo(args) => handle_todo(args).await,
     }
 }
 
@@ -174,6 +178,36 @@ async fn handle_whoami(args: WhoamiArgs) -> AppResult<()> {
     Ok(())
 }
 
+async fn handle_todo(args: TodoArgs) -> AppResult<()> {
+    match args.command {
+        TodoCommand::Add(args) => handle_todo_add(args).await,
+    }
+}
+
+async fn handle_todo_add(args: TodoAddArgs) -> AppResult<()> {
+    integration::print_secret_store_location()?;
+    let json_output = args.json;
+    let output = todo_add::run(args).await?;
+
+    if json_output {
+        let rendered = serde_json::to_string_pretty(&output)
+            .map_err(|err| AppError::generic(format!("Failed to render JSON output: {err}")))?;
+        println!("{rendered}");
+        return Ok(());
+    }
+
+    println!(
+        "{} \"{}\" in project \"{}\" / list \"{}\" {}.",
+        "Created todo".green(),
+        output.content,
+        output.project_name,
+        output.todolist_name,
+        format!("(id: {})", output.todo_id).bright_black()
+    );
+
+    Ok(())
+}
+
 fn confirm(prompt: &str) -> AppResult<bool> {
     println!("{prompt}");
 
@@ -252,7 +286,8 @@ fn resolve_integration_set_values(args: IntegrationSetArgs) -> AppResult<Integra
 }
 
 fn prompt_visible_input(prompt: &str, default: Option<&str>) -> AppResult<String> {
-    let mut input = Input::<String>::new().with_prompt(prompt);
+    let theme = prompt_theme();
+    let mut input = Input::<String>::with_theme(&theme).with_prompt(prompt);
     if let Some(value) = default {
         input = input.default(value.to_string());
     }
@@ -264,7 +299,8 @@ fn prompt_visible_input(prompt: &str, default: Option<&str>) -> AppResult<String
 }
 
 fn prompt_secret_input(prompt: &str) -> AppResult<String> {
-    Password::new()
+    let theme = prompt_theme();
+    Password::with_theme(&theme)
         .with_prompt(prompt)
         .allow_empty_password(false)
         .interact()

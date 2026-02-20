@@ -86,6 +86,12 @@ Do not invent API behavior outside those sources.
 - Avoid unnecessary helper functions used only once.
 - Use clear naming and stable CLI UX.
 
+## CLI Color Rules
+
+- Use a slightly dim prompt color instead of bright white for interactive prompts.
+- For multi-select prompts, print a gray helper line before the prompt (for example: `Tip: press Space to toggle, Enter to confirm.`).
+- For success output, color the action text in green (for example `Created todo`) and render metadata like `(id: ...)` in gray.
+
 ## Stage 1 Functional Contract (Auth Feature)
 
 The auth feature must:

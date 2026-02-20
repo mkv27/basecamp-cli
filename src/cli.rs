@@ -22,6 +22,8 @@ pub enum Command {
     Logout(LogoutArgs),
     /// Show the current authenticated Basecamp user.
     Whoami(WhoamiArgs),
+    /// Manage Basecamp to-dos.
+    Todo(TodoArgs),
 }
 
 #[derive(Debug, Args)]
@@ -82,6 +84,26 @@ pub struct LogoutArgs {
 
 #[derive(Debug, Args)]
 pub struct WhoamiArgs {
+    #[arg(long)]
+    pub json: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct TodoArgs {
+    #[command(subcommand)]
+    pub command: TodoCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum TodoCommand {
+    /// Add a new to-do interactively.
+    Add(TodoAddArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct TodoAddArgs {
+    /// To-do title/content. If omitted, prompt interactively.
+    pub content: Option<String>,
     #[arg(long)]
     pub json: bool,
 }
