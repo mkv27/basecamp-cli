@@ -16,6 +16,7 @@ Reference: <https://github.com/basecamp/bc3-api>
 - `basecamp-cli integration set/show/clear` are local credential/config operations (no Basecamp API call).
 - `basecamp-cli login` performs OAuth authorization + token exchange + `authorization.json` discovery.
 - `basecamp-cli logout` is local session/token removal (no Basecamp API logout endpoint required).
+- `basecamp-cli whoami` calls `GET /my/profile.json` for the currently authenticated user.
 
 ## OAuth Endpoints
 
@@ -67,6 +68,23 @@ When access token expires, request a new one with:
 
 Legacy `type=web_server` and `type=refresh` are still accepted, but new code should prefer standard OAuth parameters.
 
+## Whoami Endpoint
+
+Use:
+
+```text
+GET https://3.basecampapi.com/<account_id>/my/profile.json
+```
+
+Behavior:
+
+1. Load stored `access_token`.
+2. Load selected `account_id` from session metadata.
+3. Send `Authorization: Bearer <access_token>`.
+4. Return current authenticated user profile.
+
+`/my/profile.json` response shape follows the same object format as `GET /people/{id}.json`.
+
 ## Request Rules
 
 - Always send `User-Agent` with app name/contact.
@@ -83,3 +101,5 @@ Legacy `type=web_server` and `type=refresh` are still accepted, but new code sho
 - selected `account.href`
 - selected `account.name`
 - timestamp for `updated_at`
+
+This stored data is also used by `basecamp-cli whoami`.

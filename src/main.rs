@@ -9,10 +9,10 @@ use std::io::{self, IsTerminal};
 
 use crate::cli::{
     Cli, Command, IntegrationArgs, IntegrationClearArgs, IntegrationCommand, IntegrationSetArgs,
-    LoginArgs, LogoutArgs,
+    LoginArgs, LogoutArgs, WhoamiArgs,
 };
 use crate::error::{AppError, AppResult};
-use crate::features::auth::{integration, login, logout};
+use crate::features::auth::{integration, login, logout, whoami};
 
 const DEFAULT_REDIRECT_URI: &str = "http://127.0.0.1:45455/callback";
 
@@ -36,6 +36,7 @@ async fn run() -> AppResult<()> {
         Command::Integration(args) => handle_integration(args),
         Command::Login(args) => handle_login(args).await,
         Command::Logout(args) => handle_logout(args),
+        Command::Whoami(args) => handle_whoami(args).await,
     }
 }
 
@@ -136,6 +137,38 @@ fn handle_logout(args: LogoutArgs) -> AppResult<()> {
         println!("{rendered}");
     } else {
         println!("{}", "Logged out from local Basecamp session.".green());
+    }
+
+    Ok(())
+}
+
+async fn handle_whoami(args: WhoamiArgs) -> AppResult<()> {
+    integration::print_secret_store_location()?;
+    let output = whoami::run().await?;
+
+    if args.json {
+        let rendered = serde_json::to_string_pretty(&output)
+            .map_err(|err| AppError::generic(format!("Failed to render JSON output: {err}")))?;
+        println!("{rendered}");
+        return Ok(());
+    }
+
+    let email = output
+        .email_address
+        .as_deref()
+        .map(|value| format!(" <{value}>"))
+        .unwrap_or_default();
+
+    if let Some(account_name) = output.account_name.as_deref() {
+        println!(
+            "Current user: {}{} (person {}) on account \"{}\" ({}).",
+            output.name, email, output.id, account_name, output.account_id
+        );
+    } else {
+        println!(
+            "Current user: {}{} (person {}) on account {}.",
+            output.name, email, output.id, output.account_id
+        );
     }
 
     Ok(())

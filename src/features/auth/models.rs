@@ -56,6 +56,13 @@ pub struct SessionData {
     pub account_href: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct SessionContext {
+    pub access_token: String,
+    pub account_id: u64,
+    pub account_name: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct LoginOutput {
     pub ok: bool,
@@ -66,6 +73,22 @@ pub struct LoginOutput {
 #[derive(Debug, Serialize)]
 pub struct LogoutOutput {
     pub ok: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct WhoamiOutput {
+    pub ok: bool,
+    pub account_id: u64,
+    pub account_name: Option<String>,
+    pub id: u64,
+    pub name: String,
+    pub email_address: Option<String>,
+    pub title: Option<String>,
+    pub admin: Option<bool>,
+    pub owner: Option<bool>,
+    pub client: Option<bool>,
+    pub employee: Option<bool>,
+    pub time_zone: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

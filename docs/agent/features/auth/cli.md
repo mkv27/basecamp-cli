@@ -22,6 +22,7 @@ basecamp-cli integration show
 basecamp-cli integration clear [--force]
 basecamp-cli login [--account-id <id>] [--no-browser] [--json]
 basecamp-cli logout [--forget-client] [--json]
+basecamp-cli whoami [--json]
 ```
 
 ## Command Details
@@ -118,6 +119,21 @@ Optional flags:
 - `--forget-client`
 - `--json`
 
+### `basecamp-cli whoami`
+
+Purpose:
+- Show current authenticated Basecamp user details from active session.
+
+Behavior:
+1. Require local session state from prior `basecamp-cli login`.
+2. Load `access_token` and selected `account_id`.
+3. Call `GET /my/profile.json` on selected account.
+4. Print a concise human summary by default.
+5. Print structured JSON when `--json` is set.
+
+Optional flags:
+- `--json`
+
 ## Output
 
 Human output example:
@@ -134,6 +150,12 @@ JSON output example:
   "account_id": 123456789,
   "account_name": "Acme Co"
 }
+```
+
+Whoami human output example:
+
+```text
+Current user: Jane Doe <jane@example.com> (person 1049715913) on account "Acme Co" (123456789).
 ```
 
 ## Exit Codes

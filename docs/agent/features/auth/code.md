@@ -36,6 +36,7 @@ Decision notes:
 1. `integration set/show/clear` for `client_id`, `client_secret`, `redirect_uri`
 2. `login` with local callback + code exchange + refresh support
 3. `logout` clearing local session state
+4. `whoami` using stored session token + account to fetch current person profile
 
 `oauth2` maps cleanly to login internals:
 
@@ -81,6 +82,8 @@ Implementation note:
   - orchestration flow from `integration` + `oauth` + `callback`
 - `src/features/auth/logout.rs`
   - clear tokens/account session data
+- `src/features/auth/whoami.rs`
+  - call `GET /my/profile.json` using stored `access_token` + `account_id`
 
 ## `redirect_uri` Requirement
 
@@ -197,6 +200,7 @@ Keep auth testing minimal and predictable:
 3. Manual smoke test (real integration, local run)
    - run `integration set`
    - run `login`
+   - run `whoami`
    - run `logout`
 
 Notes:
@@ -207,6 +211,7 @@ Notes:
 ## References
 
 - Basecamp auth docs: <https://github.com/basecamp/bc3-api/blob/master/sections/authentication.md>
+- Basecamp people docs (`/my/profile.json`): <https://github.com/basecamp/bc3-api/blob/master/sections/people.md#get-my-personal-info>
 - oauth2-rs docs: <https://docs.rs/oauth2/latest/oauth2/>
 - OAuth.net Rust libraries: <https://oauth.net/code/rust/>
 - codex-rs keyring deps: <https://github.com/openai/codex/blob/main/codex-rs/keyring-store/Cargo.toml>

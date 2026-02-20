@@ -5,3 +5,4 @@ pub mod logout;
 pub mod models;
 pub mod oauth;
 pub mod secret_store;
+pub mod whoami;

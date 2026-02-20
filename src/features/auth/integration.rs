@@ -1,7 +1,7 @@
 use crate::error::{AppError, AppResult};
 use crate::features::auth::models::{
     AppConfig, IntegrationDefaults, IntegrationStatus, LoginOverrides, ResolvedIntegration,
-    SecretConfig, SessionConfig, SessionData,
+    SecretConfig, SessionConfig, SessionContext, SessionData,
 };
 use crate::features::auth::secret_store::SecretStore;
 use colored::Colorize;
@@ -150,6 +150,25 @@ pub fn resolve_login_credentials(overrides: LoginOverrides) -> AppResult<Resolve
         client_id,
         client_secret,
         redirect_uri,
+    })
+}
+
+pub fn resolve_session_context() -> AppResult<SessionContext> {
+    let config = load_config()?;
+    let secrets = load_secrets()?;
+
+    let access_token = secrets.access_token.ok_or_else(|| {
+        AppError::invalid_input("Missing access token. Run `basecamp-cli login` first.")
+    })?;
+
+    let account_id = config.session.account_id.ok_or_else(|| {
+        AppError::invalid_input("Missing account selection. Run `basecamp-cli login` first.")
+    })?;
+
+    Ok(SessionContext {
+        access_token,
+        account_id,
+        account_name: config.session.account_name,
     })
 }
 

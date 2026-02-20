@@ -32,6 +32,7 @@ basecamp-cli integration show
 basecamp-cli integration clear
 basecamp-cli login
 basecamp-cli logout
+basecamp-cli whoami
 ```
 
 ## Required Sources of Truth
@@ -98,6 +99,7 @@ The auth feature must:
 7. Select an account where `product == "bc3"`.
 8. Persist credentials securely for later commands.
 9. Support logout by clearing local session tokens.
+10. Support `whoami` by calling `GET /my/profile.json` with stored session.
 
 ## Security Requirements
 

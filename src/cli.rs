@@ -20,6 +20,8 @@ pub enum Command {
     Login(LoginArgs),
     /// Logout from current Basecamp session.
     Logout(LogoutArgs),
+    /// Show the current authenticated Basecamp user.
+    Whoami(WhoamiArgs),
 }
 
 #[derive(Debug, Args)]
@@ -74,6 +76,12 @@ pub struct LoginArgs {
 pub struct LogoutArgs {
     #[arg(long)]
     pub forget_client: bool,
+    #[arg(long)]
+    pub json: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct WhoamiArgs {
     #[arg(long)]
     pub json: bool,
 }
