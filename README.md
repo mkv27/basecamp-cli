@@ -2,6 +2,35 @@
 
 Small Basecamp CLI written in Rust.
 
+## Basecamp Integration
+
+This CLI works with your own Basecamp integration (OAuth client), not a shared app managed by this project.
+
+1. Create or manage your integration in Basecamp Launchpad:
+
+- https://launchpad.37signals.com/integrations
+
+2. Store your integration credentials in the CLI:
+
+```bash
+basecamp-cli integration set \
+  --client-id <your_client_id> \
+  --client-secret <your_client_secret> \
+  --redirect-uri <your_redirect_uri>
+```
+
+Or interactive mode:
+
+```bash
+basecamp-cli integration set
+```
+
+3. Verify what is configured:
+
+```bash
+basecamp-cli integration show
+```
+
 ## Install
 
 ### macOS / Linux (latest)
