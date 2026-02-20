@@ -17,19 +17,19 @@ This feature defines all authentication commands and credential/session behavior
 ## Command Surface
 
 ```bash
-basecamp integration set --client-id <id> --client-secret <secret> --redirect-uri <uri>
-basecamp integration show
-basecamp integration clear [--force]
-basecamp login [--account-id <id>] [--no-browser] [--json]
-basecamp logout [--forget-client] [--json]
+basecamp-cli integration set --client-id <id> --client-secret <secret> --redirect-uri <uri>
+basecamp-cli integration show
+basecamp-cli integration clear [--force]
+basecamp-cli login [--account-id <id>] [--no-browser] [--json]
+basecamp-cli logout [--forget-client] [--json]
 ```
 
 ## Command Details
 
-### `basecamp integration set`
+### `basecamp-cli integration set`
 
 Purpose:
-- Store OAuth integration credentials used by `basecamp login`.
+- Store OAuth integration credentials used by `basecamp-cli login`.
 
 Required flags:
 - `--client-id <id>`
@@ -42,7 +42,7 @@ Behavior:
 3. Persist non-secret client config (`client_id`, `redirect_uri`) in local config.
 4. Print confirmation without exposing secrets.
 
-### `basecamp integration show`
+### `basecamp-cli integration show`
 
 Purpose:
 - Display current auth configuration status.
@@ -52,7 +52,7 @@ Behavior:
 2. Never print raw `client_secret`.
 3. Optionally show redacted `client_id` for debugging.
 
-### `basecamp integration clear`
+### `basecamp-cli integration clear`
 
 Purpose:
 - Remove saved OAuth integration credentials.
@@ -63,7 +63,7 @@ Behavior:
 3. Delete stored `client_id` and `redirect_uri`.
 4. Keep or remove token session based on implementation policy, but document it in help text.
 
-### `basecamp login`
+### `basecamp-cli login`
 
 Purpose:
 - Authenticate user account and establish a reusable Basecamp session.
@@ -71,7 +71,7 @@ Purpose:
 Inputs precedence:
 1. Explicit flags
 2. Environment variables
-3. Stored config from `basecamp integration set`
+3. Stored config from `basecamp-cli integration set`
 
 Supported env names:
 - `BASECAMP_CLIENT_ID`
@@ -103,7 +103,7 @@ Optional flags:
 - `--no-browser`
 - `--json`
 
-### `basecamp logout`
+### `basecamp-cli logout`
 
 Purpose:
 - End local authenticated session.

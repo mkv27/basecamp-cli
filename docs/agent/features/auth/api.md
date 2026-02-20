@@ -13,9 +13,9 @@ Reference: <https://github.com/basecamp/bc3-api>
 
 ## Command to API Mapping
 
-- `basecamp integration set/show/clear` are local credential/config operations (no Basecamp API call).
-- `basecamp login` performs OAuth authorization + token exchange + `authorization.json` discovery.
-- `basecamp logout` is local session/token removal (no Basecamp API logout endpoint required).
+- `basecamp-cli integration set/show/clear` are local credential/config operations (no Basecamp API call).
+- `basecamp-cli login` performs OAuth authorization + token exchange + `authorization.json` discovery.
+- `basecamp-cli logout` is local session/token removal (no Basecamp API logout endpoint required).
 
 ## OAuth Endpoints
 

@@ -48,7 +48,7 @@ The callback listener itself is CLI runtime logic (not provided by `oauth2`), wh
 
 ## `integration set` UX Upgrade
 
-When `basecamp integration set` runs with missing arguments, the command should switch to interactive input.
+When `basecamp-cli integration set` runs with missing arguments, the command should switch to interactive input.
 
 Prompt flow (in order):
 
@@ -103,7 +103,7 @@ Required properties:
 If user chooses another port/path, they must update both:
 
 1. Basecamp integration `redirect_uri`
-2. local CLI integration config (`basecamp integration set`)
+2. local CLI integration config (`basecamp-cli integration set`)
 
 ## Secret Storage Strategy (simple, codex-rs inspired)
 

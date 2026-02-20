@@ -10,11 +10,15 @@ This file defines how any personal agent should build and maintain this project.
   - `api.md`
   - `cli.md`
   - `code.md`
+- Exception for product-level features that are not CLI/API contracts:
+  - a single `code.md` is acceptable (for example `distribution`).
 - Before implementing a feature, read that feature's `api.md`, `cli.md`, and `code.md`.
 - Current Stage 1 feature:
   - `docs/agent/features/auth/api.md`
   - `docs/agent/features/auth/cli.md`
   - `docs/agent/features/auth/code.md`
+- Current Stage 2 product feature:
+  - `docs/agent/features/distribution/code.md`
 
 ## Mission
 
@@ -23,11 +27,11 @@ Build a small-footprint Basecamp CLI in Rust.
 Stage 1 scope is the auth feature via:
 
 ```bash
-basecamp integration set
-basecamp integration show
-basecamp integration clear
-basecamp login
-basecamp logout
+basecamp-cli integration set
+basecamp-cli integration show
+basecamp-cli integration clear
+basecamp-cli login
+basecamp-cli logout
 ```
 
 ## Required Sources of Truth
@@ -85,7 +89,7 @@ Do not invent API behavior outside those sources.
 
 The auth feature must:
 
-1. Support integration credential management via `basecamp integration set/show/clear`.
+1. Support integration credential management via `basecamp-cli integration set/show/clear`.
 2. Start OAuth 2.0 Authorization Code flow for login.
 3. Open browser to Basecamp Launchpad authorization URL.
 4. Receive `code` on callback redirect URI.

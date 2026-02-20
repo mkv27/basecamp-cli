@@ -2,8 +2,8 @@ use clap::{Args, Parser, Subcommand};
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "basecamp",
-    bin_name = "basecamp",
+    name = "basecamp-cli",
+    bin_name = "basecamp-cli",
     version,
     about = "Basecamp CLI"
 )]
