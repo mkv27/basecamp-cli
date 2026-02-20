@@ -4,7 +4,12 @@ use crate::features::auth::models::WhoamiOutput;
 use reqwest::StatusCode;
 use serde::Deserialize;
 
-const USER_AGENT: &str = "basecamp-cli/0.1.0 (+https://github.com/basecamp/bc3-api)";
+const USER_AGENT: &str = concat!(
+    env!("CARGO_PKG_NAME"),
+    "/",
+    env!("CARGO_PKG_VERSION"),
+    " (+https://github.com/basecamp/bc3-api)"
+);
 
 #[derive(Debug, Deserialize)]
 struct PersonProfile {

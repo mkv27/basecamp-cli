@@ -58,3 +58,28 @@ Installers validate downloaded release archives against `SHA256SUMS` before extr
 - Windows: `%LOCALAPPDATA%\Programs\basecamp-cli\bin\basecamp-cli.exe`
 
 If needed, add that directory to your `PATH`.
+
+## Release
+
+Automated:
+
+```bash
+scripts/release.sh 0.2.0
+```
+
+Manual:
+
+```bash
+# 1) Update package version
+# edit Cargo.toml -> [package].version
+
+# 2) Keep lock file in sync
+cargo check --locked
+
+# 3) Commit + tag + push
+git add Cargo.toml Cargo.lock
+git commit -m "release: v0.2.0"
+git tag v0.2.0
+git push origin HEAD
+git push origin v0.2.0
+```

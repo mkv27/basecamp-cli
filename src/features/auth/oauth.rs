@@ -10,7 +10,12 @@ use serde::Deserialize;
 const AUTH_URL: &str = "https://launchpad.37signals.com/authorization/new";
 const TOKEN_URL: &str = "https://launchpad.37signals.com/authorization/token";
 const AUTHORIZATION_JSON_URL: &str = "https://launchpad.37signals.com/authorization.json";
-const USER_AGENT: &str = "basecamp-cli/0.1.0 (+https://github.com/basecamp/bc3-api)";
+const USER_AGENT: &str = concat!(
+    env!("CARGO_PKG_NAME"),
+    "/",
+    env!("CARGO_PKG_VERSION"),
+    " (+https://github.com/basecamp/bc3-api)"
+);
 
 #[derive(Debug, Clone)]
 pub struct TokenBundle {
