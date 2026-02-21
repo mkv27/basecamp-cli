@@ -15,9 +15,8 @@ const USER_AGENT: &str = concat!(
     env!("CARGO_PKG_VERSION"),
     " (+https://github.com/basecamp/bc3-api)"
 );
-const SELECT_HELP_MESSAGE: &str = "Use Up/Down to move, Enter to select";
-const MULTISELECT_HELP_MESSAGE: &str =
-    "Use Up/Down to move, Space to select one, Right to all, Left to none, Enter to confirm";
+const SELECT_HELP_MESSAGE: &str = "Type to filter, use Up/Down to move, Enter to select";
+const MULTISELECT_HELP_MESSAGE: &str = "Type to filter, use Up/Down to move, Space to select one, Right to all, Left to none, Enter to confirm";
 
 #[derive(Debug, Serialize)]
 pub struct TodoAddOutput {
@@ -362,7 +361,6 @@ fn prompt_select_project(projects: &[Project]) -> AppResult<usize> {
         .collect();
 
     Select::new("Project", labels)
-        .without_filtering()
         .with_help_message(SELECT_HELP_MESSAGE)
         .with_starting_cursor(0)
         .raw_prompt()
@@ -377,7 +375,6 @@ fn prompt_select_todolist(todolists: &[Todolist]) -> AppResult<usize> {
         .collect();
 
     Select::new("To-do list", labels)
-        .without_filtering()
         .with_help_message(SELECT_HELP_MESSAGE)
         .with_starting_cursor(0)
         .raw_prompt()
@@ -399,7 +396,6 @@ fn prompt_select_group(groups: &[Todolist]) -> AppResult<usize> {
         .collect();
 
     Select::new("Group", labels)
-        .without_filtering()
         .with_help_message(SELECT_HELP_MESSAGE)
         .with_starting_cursor(0)
         .raw_prompt()
@@ -470,7 +466,6 @@ fn prompt_assignee(people: Option<&[ProjectPerson]>) -> AppResult<Option<u64>> {
     );
 
     let selection = Select::new("Assignee", labels)
-        .without_filtering()
         .with_help_message(SELECT_HELP_MESSAGE)
         .with_starting_cursor(0)
         .raw_prompt()
@@ -505,7 +500,6 @@ fn prompt_completion_subscribers(people: Option<&[ProjectPerson]>) -> AppResult<
         .collect();
 
     let selections = MultiSelect::new("When done, notify", labels)
-        .without_filtering()
         .with_help_message(MULTISELECT_HELP_MESSAGE)
         .raw_prompt()
         .map_err(|err| prompt_error("select completion notifications", err))?;
