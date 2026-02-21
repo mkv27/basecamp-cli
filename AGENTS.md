@@ -24,17 +24,6 @@ This file defines how any personal agent should build and maintain this project.
 
 Build a small-footprint Basecamp CLI in Rust.
 
-Stage 1 scope is the auth feature via:
-
-```bash
-basecamp-cli integration set
-basecamp-cli integration show
-basecamp-cli integration clear
-basecamp-cli login
-basecamp-cli logout
-basecamp-cli whoami
-```
-
 ## Required Sources of Truth
 
 - Rust implementation style: <https://github.com/openai/codex/tree/main/codex-rs>
@@ -92,21 +81,6 @@ Do not invent API behavior outside those sources.
 - For multi-select prompts, print a gray helper line before the prompt (for example: `Tip: press Space to toggle, Enter to confirm.`).
 - For success output, color the action text in green (for example `Created todo`) and render metadata like `(id: ...)` in gray.
 
-## Stage 1 Functional Contract (Auth Feature)
-
-The auth feature must:
-
-1. Support integration credential management via `basecamp-cli integration set/show/clear`.
-2. Start OAuth 2.0 Authorization Code flow for login.
-3. Open browser to Basecamp Launchpad authorization URL.
-4. Receive `code` on callback redirect URI.
-5. Exchange `code` for `access_token` + `refresh_token`.
-6. Call `GET /authorization.json` with bearer token.
-7. Select an account where `product == "bc3"`.
-8. Persist credentials securely for later commands.
-9. Support logout by clearing local session tokens.
-10. Support `whoami` by calling `GET /my/profile.json` with stored session.
-
 ## Security Requirements
 
 - Never print secrets or tokens in normal logs.
@@ -114,11 +88,9 @@ The auth feature must:
 - Keep non-secret metadata (selected account, URLs) in local config.
 - Support token refresh without forcing re-login when refresh token is valid.
 
-## Deliverable for Stage 1
+## Docs
 
-A working auth command set and docs in:
+Docs are available in:
 
 - `AGENTS.md`
-- `docs/agent/features/auth/api.md`
-- `docs/agent/features/auth/cli.md`
-- `docs/agent/features/auth/code.md`
+- `docs/agent/*`
