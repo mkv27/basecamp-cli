@@ -3,6 +3,37 @@ use std::fmt::{Display, Formatter};
 
 pub type AppResult<T> = Result<T, AppError>;
 
+pub const OAUTH_UNAUTHORIZED_MESSAGE: &str = "Basecamp rejected access token (401 Unauthorized).";
+pub const OAUTH_UNAUTHORIZED_RELOGIN_MESSAGE: &str =
+    "Basecamp rejected access token (401 Unauthorized). Run `basecamp-cli login` again.";
+pub const OAUTH_FORBIDDEN_MESSAGE: &str = "Basecamp denied access (403 Forbidden).";
+
+#[derive(Debug, Clone, Copy)]
+pub struct OAuthStatusMessages<'a> {
+    pub unauthorized: &'a str,
+    pub forbidden: &'a str,
+}
+
+impl<'a> OAuthStatusMessages<'a> {
+    pub const fn new(unauthorized: &'a str, forbidden: &'a str) -> Self {
+        Self {
+            unauthorized,
+            forbidden,
+        }
+    }
+}
+
+pub fn oauth_error_from_status(
+    status_code: u16,
+    messages: OAuthStatusMessages<'_>,
+) -> Option<AppError> {
+    match status_code {
+        401 => Some(AppError::oauth(messages.unauthorized)),
+        403 => Some(AppError::oauth(messages.forbidden)),
+        _ => None,
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AppError {
     pub code: i32,

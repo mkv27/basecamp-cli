@@ -1,10 +1,12 @@
-use crate::error::{AppError, AppResult};
+use crate::error::{
+    AppError, AppResult, OAUTH_FORBIDDEN_MESSAGE, OAUTH_UNAUTHORIZED_MESSAGE, OAuthStatusMessages,
+    oauth_error_from_status,
+};
 use oauth2::basic::BasicClient;
 use oauth2::{
     AuthType, AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl,
     RefreshToken, TokenResponse, TokenUrl,
 };
-use reqwest::StatusCode;
 use serde::Deserialize;
 
 const AUTH_URL: &str = "https://launchpad.37signals.com/authorization/new";
@@ -137,14 +139,11 @@ pub async fn fetch_authorization(access_token: &str) -> AppResult<AuthorizationE
         .await
         .map_err(|err| AppError::generic(format!("Failed to request authorization.json: {err}")))?;
 
-    if response.status() == StatusCode::UNAUTHORIZED {
-        return Err(AppError::oauth(
-            "Basecamp rejected access token (401 Unauthorized).",
-        ));
-    }
-
-    if response.status() == StatusCode::FORBIDDEN {
-        return Err(AppError::oauth("Basecamp denied access (403 Forbidden)."));
+    if let Some(err) = oauth_error_from_status(
+        response.status().as_u16(),
+        OAuthStatusMessages::new(OAUTH_UNAUTHORIZED_MESSAGE, OAUTH_FORBIDDEN_MESSAGE),
+    ) {
+        return Err(err);
     }
 
     if !response.status().is_success() {

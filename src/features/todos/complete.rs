@@ -2,18 +2,11 @@ use super::search::{
     TodoCompletionFilter, ensure_search_mode_terminal, print_selected_todos, prompt_select_todos,
     resolve_query, search_todos,
 };
+use crate::basecamp::client::BasecampClient;
 use crate::cli::TodoCompleteArgs;
 use crate::error::{AppError, AppResult};
 use crate::features::auth::integration;
-use reqwest::{Client, StatusCode};
 use serde::Serialize;
-
-const USER_AGENT: &str = concat!(
-    env!("CARGO_PKG_NAME"),
-    "/",
-    env!("CARGO_PKG_VERSION"),
-    " (+https://github.com/basecamp/bc3-api)"
-);
 
 #[derive(Debug, Serialize)]
 pub struct TodoCompleteOutput {
@@ -39,21 +32,14 @@ pub struct CompletedTodo {
 
 pub async fn run(args: TodoCompleteArgs) -> AppResult<TodoCompleteOutput> {
     let session = integration::resolve_session_context()?;
-    let client = build_http_client()?;
+    let client = BasecampClient::new(session.account_id, session.access_token.clone())?;
 
     if let Some(todo_id) = args.id {
         let project_id = args.project_id.ok_or_else(|| {
             AppError::invalid_input("`--project-id` is required when using `--id`.")
         })?;
 
-        complete_todo(
-            &client,
-            session.account_id,
-            &session.access_token,
-            project_id,
-            todo_id,
-        )
-        .await?;
+        client.complete_todo(project_id, todo_id).await?;
 
         return Ok(TodoCompleteOutput {
             ok: true,
@@ -74,8 +60,6 @@ pub async fn run(args: TodoCompleteArgs) -> AppResult<TodoCompleteOutput> {
     let query = resolve_query(args.query)?;
     let matches = search_todos(
         &client,
-        session.account_id,
-        &session.access_token,
         &query,
         args.project_id,
         TodoCompletionFilter::IncompleteOnly,
@@ -107,14 +91,7 @@ pub async fn run(args: TodoCompleteArgs) -> AppResult<TodoCompleteOutput> {
         let project_name = matched.project_name.clone();
         let content = matched.content.clone();
 
-        complete_todo(
-            &client,
-            session.account_id,
-            &session.access_token,
-            project_id,
-            todo_id,
-        )
-        .await?;
+        client.complete_todo(project_id, todo_id).await?;
 
         completed.push(CompletedTodo {
             todo_id,
@@ -133,58 +110,4 @@ pub async fn run(args: TodoCompleteArgs) -> AppResult<TodoCompleteOutput> {
         completed,
         count,
     })
-}
-
-fn build_http_client() -> AppResult<Client> {
-    Client::builder()
-        .user_agent(USER_AGENT)
-        .build()
-        .map_err(|err| AppError::generic(format!("Failed to build HTTP client: {err}")))
-}
-
-async fn complete_todo(
-    client: &Client,
-    account_id: u64,
-    access_token: &str,
-    project_id: u64,
-    todo_id: u64,
-) -> AppResult<()> {
-    let url = format!(
-        "https://3.basecampapi.com/{account_id}/buckets/{project_id}/todos/{todo_id}/completion.json"
-    );
-
-    let response = client
-        .post(&url)
-        .bearer_auth(access_token)
-        .send()
-        .await
-        .map_err(|err| AppError::generic(format!("Failed to request todo completion: {err}")))?;
-
-    match response.status() {
-        StatusCode::UNAUTHORIZED => {
-            return Err(AppError::oauth(
-                "Basecamp rejected access token (401 Unauthorized). Run `basecamp-cli login` again.",
-            ));
-        }
-        StatusCode::FORBIDDEN => {
-            return Err(AppError::oauth(
-                "Basecamp denied todo completion (403 Forbidden).",
-            ));
-        }
-        StatusCode::NOT_FOUND => {
-            return Err(AppError::no_account(
-                "Target project/todo was not found or is not accessible.",
-            ));
-        }
-        _ => {}
-    }
-
-    if !response.status().is_success() {
-        return Err(AppError::generic(format!(
-            "Basecamp todo completion failed with status {}.",
-            response.status()
-        )));
-    }
-
-    Ok(())
 }

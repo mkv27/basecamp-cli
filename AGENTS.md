@@ -24,6 +24,24 @@ This file defines how any personal agent should build and maintain this project.
 
 Build a small-footprint Basecamp CLI in Rust.
 
+## Internal Basecamp SDK Layer
+
+- Keep Basecamp API wiring in `src/basecamp/*`.
+- `src/basecamp/client.rs` is the single place for:
+  - Basecamp URL construction
+  - bearer-token request setup
+  - HTTP status -> `AppError` mapping
+  - request/response decode error handling
+- Feature command modules in `src/features/*` should focus on:
+  - CLI args validation
+  - interactive prompt flow
+  - output rendering (human/JSON)
+  - orchestration of SDK calls
+- Do not call Basecamp endpoints directly from feature modules with ad-hoc `reqwest` code.
+- Grow the internal SDK incrementally:
+  - only add endpoints and models required by active CLI features
+  - avoid speculative/full-surface SDK generation
+
 ## Required Sources of Truth
 
 - Rust implementation style: <https://github.com/openai/codex/tree/main/codex-rs>

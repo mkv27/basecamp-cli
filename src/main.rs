@@ -1,3 +1,4 @@
+mod basecamp;
 mod cli;
 mod error;
 mod features;

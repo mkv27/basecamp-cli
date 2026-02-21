@@ -1,9 +1,9 @@
+use crate::basecamp::client::BasecampClient;
+use crate::basecamp::models::TodoSearchResult;
 use crate::error::{AppError, AppResult};
 use crate::ui::prompt_error;
 use colored::Colorize;
 use inquire::{MultiSelect, Text};
-use reqwest::{Client, StatusCode};
-use serde::Deserialize;
 use std::io::{self, IsTerminal};
 
 const SEARCH_PER_PAGE: u32 = 50;
@@ -22,30 +22,6 @@ pub(super) struct TodoMatch {
     pub project_id: u64,
     pub project_name: String,
     pub content: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct SearchRecording {
-    #[serde(deserialize_with = "deserialize_id")]
-    id: u64,
-    #[serde(rename = "type")]
-    recording_type: String,
-    #[serde(default)]
-    title: Option<String>,
-    #[serde(default)]
-    content: Option<String>,
-    #[serde(default)]
-    completed: Option<bool>,
-    #[serde(default)]
-    bucket: Option<SearchBucket>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SearchBucket {
-    #[serde(deserialize_with = "deserialize_id")]
-    id: u64,
-    #[serde(default)]
-    name: String,
 }
 
 impl TodoCompletionFilter {
@@ -81,42 +57,19 @@ pub(super) fn resolve_query(positional_query: Option<String>) -> AppResult<Strin
 }
 
 pub(super) async fn search_todos(
-    client: &Client,
-    account_id: u64,
-    access_token: &str,
+    client: &BasecampClient,
     query: &str,
     scope_project_id: Option<u64>,
     completion_filter: TodoCompletionFilter,
 ) -> AppResult<Vec<TodoMatch>> {
-    let mut page = 1_u32;
-    let mut matches = Vec::new();
-
-    loop {
-        let recordings = search_page(
-            client,
-            account_id,
-            access_token,
-            query,
-            scope_project_id,
-            page,
-        )
+    let recordings = client
+        .search_todos(query, scope_project_id, SEARCH_PER_PAGE, SEARCH_MAX_PAGES)
         .await?;
 
-        let page_count = recordings.len();
-        matches.extend(
-            recordings
-                .into_iter()
-                .filter_map(|recording| to_todo_match(recording, completion_filter)),
-        );
-
-        if page_count < SEARCH_PER_PAGE as usize || page >= SEARCH_MAX_PAGES {
-            break;
-        }
-
-        page += 1;
-    }
-
-    Ok(matches)
+    Ok(recordings
+        .into_iter()
+        .filter_map(|recording| to_todo_match(recording, completion_filter))
+        .collect())
 }
 
 pub(super) fn prompt_select_todos(matches: &[TodoMatch]) -> AppResult<Vec<usize>> {
@@ -156,67 +109,8 @@ pub(super) fn print_selected_todos(matches: &[TodoMatch], selections: &[usize]) 
     Ok(())
 }
 
-async fn search_page(
-    client: &Client,
-    account_id: u64,
-    access_token: &str,
-    query: &str,
-    scope_project_id: Option<u64>,
-    page: u32,
-) -> AppResult<Vec<SearchRecording>> {
-    let url = format!("https://3.basecampapi.com/{account_id}/search.json");
-    let mut params = vec![
-        ("q", query.to_string()),
-        ("type", "Todo".to_string()),
-        ("page", page.to_string()),
-        ("per_page", SEARCH_PER_PAGE.to_string()),
-    ];
-    if let Some(project_id) = scope_project_id {
-        params.push(("bucket_id", project_id.to_string()));
-    }
-
-    let response = client
-        .get(&url)
-        .bearer_auth(access_token)
-        .query(&params)
-        .send()
-        .await
-        .map_err(|err| AppError::generic(format!("Failed to request to-do search: {err}")))?;
-
-    match response.status() {
-        StatusCode::UNAUTHORIZED => {
-            return Err(AppError::oauth(
-                "Basecamp rejected access token (401 Unauthorized). Run `basecamp-cli login` again.",
-            ));
-        }
-        StatusCode::FORBIDDEN => {
-            return Err(AppError::oauth(
-                "Basecamp denied to-do search access (403 Forbidden).",
-            ));
-        }
-        StatusCode::NOT_FOUND => {
-            return Err(AppError::no_account(
-                "Basecamp to-do search endpoint was not found or is not accessible.",
-            ));
-        }
-        _ => {}
-    }
-
-    if !response.status().is_success() {
-        return Err(AppError::generic(format!(
-            "Basecamp to-do search failed with status {}.",
-            response.status()
-        )));
-    }
-
-    response
-        .json::<Vec<SearchRecording>>()
-        .await
-        .map_err(|err| AppError::generic(format!("Failed to decode to-do search response: {err}")))
-}
-
 fn to_todo_match(
-    recording: SearchRecording,
+    recording: TodoSearchResult,
     completion_filter: TodoCompletionFilter,
 ) -> Option<TodoMatch> {
     if recording.recording_type != "Todo" {
@@ -241,7 +135,7 @@ fn to_todo_match(
     })
 }
 
-fn recording_content(recording: &SearchRecording) -> String {
+fn recording_content(recording: &TodoSearchResult) -> String {
     normalize_optional(recording.content.clone())
         .or_else(|| normalize_optional(recording.title.clone()))
         .unwrap_or_else(|| format!("Todo {}", recording.id))
@@ -264,21 +158,4 @@ fn normalize_optional(value: Option<String>) -> Option<String> {
             Some(trimmed)
         }
     })
-}
-
-fn deserialize_id<'de, D>(deserializer: D) -> Result<u64, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum IdValue {
-        Number(u64),
-        Text(String),
-    }
-
-    match IdValue::deserialize(deserializer)? {
-        IdValue::Number(value) => Ok(value),
-        IdValue::Text(value) => value.parse::<u64>().map_err(serde::de::Error::custom),
-    }
 }
