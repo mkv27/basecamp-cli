@@ -6,6 +6,7 @@ mod ui;
 
 use clap::Parser;
 use colored::Colorize;
+use inquire::validator::Validation;
 use inquire::{Password, Text};
 use std::io::{self, IsTerminal};
 
@@ -367,10 +368,18 @@ fn resolve_integration_set_values(args: IntegrationSetArgs) -> AppResult<Integra
 }
 
 fn prompt_visible_input(prompt: &str, default: Option<&str>) -> AppResult<String> {
+    let required_message = format!("{prompt} is required.");
     let input = match default {
         Some(value) => Text::new(prompt).with_default(value),
         None => Text::new(prompt),
-    };
+    }
+    .with_validator(move |value: &str| {
+        if value.trim().is_empty() {
+            Ok(Validation::Invalid(required_message.clone().into()))
+        } else {
+            Ok(Validation::Valid)
+        }
+    });
 
     input
         .prompt()
@@ -379,8 +388,16 @@ fn prompt_visible_input(prompt: &str, default: Option<&str>) -> AppResult<String
 }
 
 fn prompt_secret_input(prompt: &str) -> AppResult<String> {
+    let required_message = format!("{prompt} is required.");
     let value = Password::new(prompt)
         .without_confirmation()
+        .with_validator(move |value: &str| {
+            if value.trim().is_empty() {
+                Ok(Validation::Invalid(required_message.clone().into()))
+            } else {
+                Ok(Validation::Valid)
+            }
+        })
         .prompt()
         .map_err(|err| prompt_error(&format!("read {prompt}"), err))?;
 

@@ -3,6 +3,7 @@ use crate::basecamp::models::TodoSearchResult;
 use crate::error::{AppError, AppResult};
 use crate::ui::prompt_error;
 use colored::Colorize;
+use inquire::validator::Validation;
 use inquire::{MultiSelect, Text};
 use std::io::{self, IsTerminal};
 
@@ -48,7 +49,16 @@ pub(super) fn resolve_query(positional_query: Option<String>) -> AppResult<Strin
         return Ok(query);
     }
 
+    let required_message = "Search text is required.".to_string();
     let query = Text::new("Search text")
+        .with_help_message("Required.")
+        .with_validator(move |value: &str| {
+            if value.trim().is_empty() {
+                Ok(Validation::Invalid(required_message.clone().into()))
+            } else {
+                Ok(Validation::Valid)
+            }
+        })
         .prompt()
         .map_err(|err| prompt_error("read search text", err))?;
 

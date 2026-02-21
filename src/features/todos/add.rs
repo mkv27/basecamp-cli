@@ -5,6 +5,7 @@ use crate::error::{AppError, AppResult};
 use crate::features::auth::integration;
 use crate::ui::prompt_error;
 use colored::Colorize;
+use inquire::validator::Validation;
 use inquire::{Confirm, MultiSelect, Select, Text};
 use serde::Serialize;
 use std::io::{self, IsTerminal};
@@ -176,7 +177,16 @@ fn resolve_content(positional_content: Option<String>) -> AppResult<String> {
         return Ok(value);
     }
 
+    let required_message = "Title/content is required.".to_string();
     let content = Text::new("Title")
+        .with_help_message("Required.")
+        .with_validator(move |value: &str| {
+            if value.trim().is_empty() {
+                Ok(Validation::Invalid(required_message.clone().into()))
+            } else {
+                Ok(Validation::Valid)
+            }
+        })
         .prompt()
         .map_err(|err| prompt_error("read title", err))?;
 
