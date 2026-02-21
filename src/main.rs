@@ -10,11 +10,12 @@ use std::io::{self, IsTerminal};
 
 use crate::cli::{
     Cli, Command, IntegrationArgs, IntegrationClearArgs, IntegrationCommand, IntegrationSetArgs,
-    LoginArgs, LogoutArgs, TodoAddArgs, TodoArgs, TodoCommand, TodoCompleteArgs, WhoamiArgs,
+    LoginArgs, LogoutArgs, TodoAddArgs, TodoArgs, TodoCommand, TodoCompleteArgs, TodoReOpenArgs,
+    WhoamiArgs,
 };
 use crate::error::{AppError, AppResult};
 use crate::features::auth::{integration, login, logout, whoami};
-use crate::features::todos::{add as todo_add, complete as todo_complete};
+use crate::features::todos::{add as todo_add, complete as todo_complete, re_open as todo_re_open};
 use crate::ui::{configure_prompt_rendering, prompt_error};
 
 const DEFAULT_REDIRECT_URI: &str = "http://127.0.0.1:45455/callback";
@@ -184,6 +185,7 @@ async fn handle_todo(args: TodoArgs, verbose: bool) -> AppResult<()> {
     match args.command {
         TodoCommand::Add(args) => handle_todo_add(args, verbose).await,
         TodoCommand::Complete(args) => handle_todo_complete(args, verbose).await,
+        TodoCommand::ReOpen(args) => handle_todo_re_open(args, verbose).await,
     }
 }
 
@@ -226,6 +228,40 @@ async fn handle_todo_complete(args: TodoCompleteArgs, verbose: bool) -> AppResul
     let todo_label = if output.count == 1 { "todo" } else { "todos" };
     println!("{} {} {}:", "Completed".green(), output.count, todo_label);
     for item in &output.completed {
+        let title = item
+            .content
+            .clone()
+            .unwrap_or_else(|| format!("Todo {}", item.todo_id));
+        let metadata = match item.project_name.as_deref() {
+            Some(project_name) => {
+                format!(
+                    "(id: {}, project: {} / {})",
+                    item.todo_id, project_name, item.project_id
+                )
+            }
+            None => format!("(id: {}, project: {})", item.todo_id, item.project_id),
+        };
+        println!("  - {} {}", title, metadata.bright_black());
+    }
+
+    Ok(())
+}
+
+async fn handle_todo_re_open(args: TodoReOpenArgs, verbose: bool) -> AppResult<()> {
+    print_secret_store_location_if_verbose(verbose)?;
+    let json_output = args.json;
+    let output = todo_re_open::run(args).await?;
+
+    if json_output {
+        let rendered = serde_json::to_string_pretty(&output)
+            .map_err(|err| AppError::generic(format!("Failed to render JSON output: {err}")))?;
+        println!("{rendered}");
+        return Ok(());
+    }
+
+    let todo_label = if output.count == 1 { "todo" } else { "todos" };
+    println!("{} {} {}:", "Re-opened".green(), output.count, todo_label);
+    for item in &output.reopened {
         let title = item
             .content
             .clone()

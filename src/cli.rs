@@ -103,6 +103,8 @@ pub enum TodoCommand {
     Add(TodoAddArgs),
     /// Complete to-dos by search or direct id.
     Complete(TodoCompleteArgs),
+    /// Re-open a completed to-do by id.
+    ReOpen(TodoReOpenArgs),
 }
 
 #[derive(Debug, Args)]
@@ -121,6 +123,18 @@ pub struct TodoAddArgs {
 
 #[derive(Debug, Args)]
 pub struct TodoCompleteArgs {
+    /// To-do search text. If omitted in search mode, prompt interactively.
+    pub query: Option<String>,
+    #[arg(long, conflicts_with = "query", requires = "project_id")]
+    pub id: Option<u64>,
+    #[arg(long)]
+    pub project_id: Option<u64>,
+    #[arg(long)]
+    pub json: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct TodoReOpenArgs {
     /// To-do search text. If omitted in search mode, prompt interactively.
     pub query: Option<String>,
     #[arg(long, conflicts_with = "query", requires = "project_id")]
