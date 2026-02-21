@@ -5,7 +5,7 @@ mod ui;
 
 use clap::Parser;
 use colored::Colorize;
-use dialoguer::{Input, Password};
+use inquire::{Password, Text};
 use std::io::{self, IsTerminal};
 
 use crate::cli::{
@@ -15,7 +15,7 @@ use crate::cli::{
 use crate::error::{AppError, AppResult};
 use crate::features::auth::{integration, login, logout, whoami};
 use crate::features::todos::{add as todo_add, complete as todo_complete};
-use crate::ui::prompt_theme;
+use crate::ui::{configure_prompt_rendering, prompt_error};
 
 const DEFAULT_REDIRECT_URI: &str = "http://127.0.0.1:45455/callback";
 
@@ -33,6 +33,7 @@ async fn main() {
 }
 
 async fn run() -> AppResult<()> {
+    configure_prompt_rendering();
     let cli = Cli::parse();
     let verbose = cli.verbose;
 
@@ -222,22 +223,8 @@ async fn handle_todo_complete(args: TodoCompleteArgs, verbose: bool) -> AppResul
         return Ok(());
     }
 
-    if output.count == 1 {
-        let completed = output
-            .completed
-            .first()
-            .ok_or_else(|| AppError::generic("Missing completed to-do output item."))?;
-        let metadata = format!(
-            "(id: {}, project: {})",
-            completed.todo_id, completed.project_id
-        )
-        .bright_black();
-        println!("{} {}.", "Completed todo".green(), metadata);
-        return Ok(());
-    }
-
-    let completed_label = format!("{} todos", output.count);
-    println!("{} {}:", "Completed".green(), completed_label);
+    let todo_label = if output.count == 1 { "todo" } else { "todos" };
+    println!("{} {} {}:", "Completed".green(), output.count, todo_label);
     for item in &output.completed {
         let title = item
             .content
@@ -343,25 +330,25 @@ fn resolve_integration_set_values(args: IntegrationSetArgs) -> AppResult<Integra
 }
 
 fn prompt_visible_input(prompt: &str, default: Option<&str>) -> AppResult<String> {
-    let theme = prompt_theme();
-    let mut input = Input::<String>::with_theme(&theme).with_prompt(prompt);
-    if let Some(value) = default {
-        input = input.default(value.to_string());
-    }
+    let input = match default {
+        Some(value) => Text::new(prompt).with_default(value),
+        None => Text::new(prompt),
+    };
 
     input
-        .interact_text()
+        .prompt()
         .map(|value| value.trim().to_string())
-        .map_err(|err| AppError::invalid_input(format!("Failed to read {prompt}: {err}")))
+        .map_err(|err| prompt_error(&format!("read {prompt}"), err))
 }
 
 fn prompt_secret_input(prompt: &str) -> AppResult<String> {
-    let theme = prompt_theme();
-    Password::with_theme(&theme)
-        .with_prompt(prompt)
-        .allow_empty_password(false)
-        .interact()
-        .map_err(|err| AppError::invalid_input(format!("Failed to read {prompt}: {err}")))
+    let value = Password::new(prompt)
+        .without_confirmation()
+        .prompt()
+        .map_err(|err| prompt_error(&format!("read {prompt}"), err))?;
+
+    normalize_optional(Some(value))
+        .ok_or_else(|| AppError::invalid_input(format!("{prompt} is required.")))
 }
 
 fn normalize_optional(value: Option<String>) -> Option<String> {

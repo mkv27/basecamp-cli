@@ -1,9 +1,9 @@
 use crate::cli::TodoCompleteArgs;
 use crate::error::{AppError, AppResult};
 use crate::features::auth::integration;
-use crate::ui::prompt_theme;
+use crate::ui::prompt_error;
 use colored::Colorize;
-use dialoguer::{Input, MultiSelect};
+use inquire::{MultiSelect, Text};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::io::{self, IsTerminal};
@@ -16,6 +16,8 @@ const USER_AGENT: &str = concat!(
 );
 const SEARCH_PER_PAGE: u32 = 50;
 const SEARCH_MAX_PAGES: u32 = 20;
+const MULTISELECT_HELP_MESSAGE: &str =
+    "Use Up/Down to move, Space to select one, Right to all, Left to none, Enter to confirm";
 
 #[derive(Debug, Serialize)]
 pub struct TodoCompleteOutput {
@@ -128,7 +130,6 @@ pub async fn run(args: TodoCompleteArgs) -> AppResult<TodoCompleteOutput> {
         ));
     }
 
-    println!("Selected {} to complete:", selections.len());
     for selection in &selections {
         let matched = matches
             .get(*selection)
@@ -358,22 +359,15 @@ fn resolve_query(positional_query: Option<String>) -> AppResult<String> {
         return Ok(query);
     }
 
-    let theme = prompt_theme();
-    let query = Input::<String>::with_theme(&theme)
-        .with_prompt("Search text")
-        .interact_text()
-        .map_err(|err| AppError::invalid_input(format!("Failed to read search text: {err}")))?;
+    let query = Text::new("Search text")
+        .prompt()
+        .map_err(|err| prompt_error("read search text", err))?;
 
     normalize_optional(Some(query))
         .ok_or_else(|| AppError::invalid_input("Search text is required."))
 }
 
 fn prompt_select_todos(matches: &[TodoMatch]) -> AppResult<Vec<usize>> {
-    eprintln!(
-        "{}",
-        "Tip: press Space to toggle, Enter to confirm.".bright_black()
-    );
-
     let labels: Vec<String> = matches
         .iter()
         .map(|todo| {
@@ -382,13 +376,26 @@ fn prompt_select_todos(matches: &[TodoMatch]) -> AppResult<Vec<usize>> {
         })
         .collect();
 
-    let theme = prompt_theme();
-    MultiSelect::with_theme(&theme)
-        .with_prompt("To-dos")
-        .report(false)
-        .items(&labels)
-        .interact()
-        .map_err(|err| AppError::invalid_input(format!("Failed to select to-dos: {err}")))
+    MultiSelect::new("To-dos", labels)
+        .without_filtering()
+        .with_help_message(MULTISELECT_HELP_MESSAGE)
+        .with_formatter(&format_selected_count)
+        .raw_prompt()
+        .map(|selections| {
+            selections
+                .into_iter()
+                .map(|selection| selection.index)
+                .collect()
+        })
+        .map_err(|err| prompt_error("select to-dos", err))
+}
+
+fn format_selected_count(selections: &[inquire::list_option::ListOption<&String>]) -> String {
+    let count = selections.len();
+    match count {
+        1 => "1 selected".to_string(),
+        _ => format!("{count} selected"),
+    }
 }
 
 fn normalize_optional(value: Option<String>) -> Option<String> {

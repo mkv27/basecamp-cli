@@ -16,7 +16,7 @@ tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 url = "2.5.7"
-dialoguer = "0.12.0"
+inquire = "0.9.3"
 ```
 
 Decision notes:
@@ -66,7 +66,7 @@ Rules:
 
 Implementation note:
 
-- Keep it simple. Use a minimal hidden-input approach for password entry (for example, `rpassword`) if needed.
+- Keep it simple. Use `inquire::Password` for hidden password entry.
 
 ## Proposed Auth Module Layout
 

@@ -17,7 +17,7 @@ age = "0.11.2"
 rand = "0.10.0"
 sha2 = "0.10.9"
 base64 = "0.22.1"
-dialoguer = "0.12.0"
+inquire = "0.9.3"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 keyring = { version = "3.6.3", default-features = false, features = ["crypto-rust", "linux-native-async-persistent"] }

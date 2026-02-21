@@ -1,9 +1,9 @@
 use crate::cli::TodoAddArgs;
 use crate::error::{AppError, AppResult};
 use crate::features::auth::integration;
-use crate::ui::prompt_theme;
+use crate::ui::prompt_error;
 use colored::Colorize;
-use dialoguer::{Confirm, Input, MultiSelect, Select};
+use inquire::{Confirm, MultiSelect, Select, Text};
 use reqwest::{Client, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,9 @@ const USER_AGENT: &str = concat!(
     env!("CARGO_PKG_VERSION"),
     " (+https://github.com/basecamp/bc3-api)"
 );
+const SELECT_HELP_MESSAGE: &str = "Use Up/Down to move, Enter to select";
+const MULTISELECT_HELP_MESSAGE: &str =
+    "Use Up/Down to move, Space to select one, Right to all, Left to none, Enter to confirm";
 
 #[derive(Debug, Serialize)]
 pub struct TodoAddOutput {
@@ -353,57 +356,55 @@ fn resolve_todoset_id(project: &Project) -> AppResult<u64> {
 }
 
 fn prompt_select_project(projects: &[Project]) -> AppResult<usize> {
-    let theme = prompt_theme();
     let labels: Vec<String> = projects
         .iter()
         .map(|project| format!("{} ({})", project.name, project.id))
         .collect();
 
-    Select::with_theme(&theme)
-        .with_prompt("Project")
-        .items(&labels)
-        .default(0)
-        .interact()
-        .map_err(|err| AppError::invalid_input(format!("Failed to select project: {err}")))
+    Select::new("Project", labels)
+        .without_filtering()
+        .with_help_message(SELECT_HELP_MESSAGE)
+        .with_starting_cursor(0)
+        .raw_prompt()
+        .map(|selection| selection.index)
+        .map_err(|err| prompt_error("select project", err))
 }
 
 fn prompt_select_todolist(todolists: &[Todolist]) -> AppResult<usize> {
-    let theme = prompt_theme();
     let labels: Vec<String> = todolists
         .iter()
         .map(|list| format!("{} ({})", todolist_display_name(list), list.id))
         .collect();
 
-    Select::with_theme(&theme)
-        .with_prompt("To-do list")
-        .items(&labels)
-        .default(0)
-        .interact()
-        .map_err(|err| AppError::invalid_input(format!("Failed to select to-do list: {err}")))
+    Select::new("To-do list", labels)
+        .without_filtering()
+        .with_help_message(SELECT_HELP_MESSAGE)
+        .with_starting_cursor(0)
+        .raw_prompt()
+        .map(|selection| selection.index)
+        .map_err(|err| prompt_error("select to-do list", err))
 }
 
 fn prompt_use_group() -> AppResult<bool> {
-    let theme = prompt_theme();
-    Confirm::with_theme(&theme)
-        .with_prompt("Use a group?")
-        .default(false)
-        .interact()
-        .map_err(|err| AppError::invalid_input(format!("Failed to confirm group usage: {err}")))
+    Confirm::new("Use a group?")
+        .with_default(false)
+        .prompt()
+        .map_err(|err| prompt_error("confirm group usage", err))
 }
 
 fn prompt_select_group(groups: &[Todolist]) -> AppResult<usize> {
-    let theme = prompt_theme();
     let labels: Vec<String> = groups
         .iter()
         .map(|group| format!("{} ({})", todolist_display_name(group), group.id))
         .collect();
 
-    Select::with_theme(&theme)
-        .with_prompt("Group")
-        .items(&labels)
-        .default(0)
-        .interact()
-        .map_err(|err| AppError::invalid_input(format!("Failed to select group: {err}")))
+    Select::new("Group", labels)
+        .without_filtering()
+        .with_help_message(SELECT_HELP_MESSAGE)
+        .with_starting_cursor(0)
+        .raw_prompt()
+        .map(|selection| selection.index)
+        .map_err(|err| prompt_error("select group", err))
 }
 
 fn resolve_content(positional_content: Option<String>) -> AppResult<String> {
@@ -411,11 +412,9 @@ fn resolve_content(positional_content: Option<String>) -> AppResult<String> {
         return Ok(value);
     }
 
-    let theme = prompt_theme();
-    let content = Input::<String>::with_theme(&theme)
-        .with_prompt("Title")
-        .interact_text()
-        .map_err(|err| AppError::invalid_input(format!("Failed to read title: {err}")))?;
+    let content = Text::new("Title")
+        .prompt()
+        .map_err(|err| prompt_error("read title", err))?;
 
     normalize_optional(Some(content))
         .ok_or_else(|| AppError::invalid_input("Title/content is required."))
@@ -443,12 +442,9 @@ fn resolve_due_on(flag_due_on: Option<String>) -> AppResult<Option<String>> {
 }
 
 fn prompt_optional_text(prompt: &str) -> AppResult<Option<String>> {
-    let theme = prompt_theme();
-    let value = Input::<String>::with_theme(&theme)
-        .with_prompt(prompt)
-        .allow_empty(true)
-        .interact_text()
-        .map_err(|err| AppError::invalid_input(format!("Failed to read {prompt}: {err}")))?;
+    let value = Text::new(prompt)
+        .prompt()
+        .map_err(|err| prompt_error(&format!("read {prompt}"), err))?;
 
     Ok(normalize_optional(Some(value)))
 }
@@ -473,13 +469,13 @@ fn prompt_assignee(people: Option<&[ProjectPerson]>) -> AppResult<Option<u64>> {
             }),
     );
 
-    let theme = prompt_theme();
-    let selection = Select::with_theme(&theme)
-        .with_prompt("Assignee")
-        .items(&labels)
-        .default(0)
-        .interact()
-        .map_err(|err| AppError::invalid_input(format!("Failed to select assignee: {err}")))?;
+    let selection = Select::new("Assignee", labels)
+        .without_filtering()
+        .with_help_message(SELECT_HELP_MESSAGE)
+        .with_starting_cursor(0)
+        .raw_prompt()
+        .map(|selected| selected.index)
+        .map_err(|err| prompt_error("select assignee", err))?;
 
     if selection == 0 {
         return Ok(None);
@@ -500,12 +496,6 @@ fn prompt_completion_subscribers(people: Option<&[ProjectPerson]>) -> AppResult<
         return Ok(None);
     }
 
-    eprintln!(
-        "{}",
-        "Tip: press Space to toggle, Enter to confirm.".bright_black()
-    );
-
-    let theme = prompt_theme();
     let labels: Vec<String> = people
         .iter()
         .map(|person| match person.email_address.as_deref() {
@@ -514,13 +504,11 @@ fn prompt_completion_subscribers(people: Option<&[ProjectPerson]>) -> AppResult<
         })
         .collect();
 
-    let selections = MultiSelect::with_theme(&theme)
-        .with_prompt("When done, notify")
-        .items(&labels)
-        .interact()
-        .map_err(|err| {
-            AppError::invalid_input(format!("Failed to select completion notifications: {err}"))
-        })?;
+    let selections = MultiSelect::new("When done, notify", labels)
+        .without_filtering()
+        .with_help_message(MULTISELECT_HELP_MESSAGE)
+        .raw_prompt()
+        .map_err(|err| prompt_error("select completion notifications", err))?;
 
     if selections.is_empty() {
         return Ok(None);
@@ -529,7 +517,7 @@ fn prompt_completion_subscribers(people: Option<&[ProjectPerson]>) -> AppResult<
     let mut ids = Vec::with_capacity(selections.len());
     for selection in selections {
         let person = people
-            .get(selection)
+            .get(selection.index)
             .ok_or_else(|| AppError::invalid_input("Completion notify selection out of range."))?;
         ids.push(person.id);
     }

@@ -69,7 +69,7 @@ Do not invent API behavior outside those sources.
   - `serde = { version = "1.0.228", features = ["derive"] }`
   - `serde_json = "1.0.145"`
   - `url = "2.5.7"`
-  - `dialoguer = "0.12.0"`
+  - `inquire = "0.9.3"`
 - Approved Stage 1 auth secret-storage dependencies:
   - `keyring = { version = "3.6.3", default-features = false, features = ["crypto-rust"] }`
   - `age = "0.11.2"`
