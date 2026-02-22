@@ -101,9 +101,11 @@ pub struct TodoArgs {
 pub enum TodoCommand {
     /// Add a new to-do interactively.
     Add(TodoAddArgs),
+    /// Edit a to-do by search or direct id.
+    Edit(TodoEditArgs),
     /// Complete to-dos by search or direct id.
     Complete(TodoCompleteArgs),
-    /// Re-open a completed to-do by id.
+    /// Re-open completed to-dos by search or direct id.
     ReOpen(TodoReOpenArgs),
 }
 
@@ -129,6 +131,27 @@ pub struct TodoCompleteArgs {
     pub id: Option<u64>,
     #[arg(long)]
     pub project_id: Option<u64>,
+    #[arg(long)]
+    pub json: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct TodoEditArgs {
+    /// To-do search text. If omitted in search mode, prompt interactively.
+    pub query: Option<String>,
+    #[arg(long, conflicts_with = "query", requires = "project_id")]
+    pub id: Option<u64>,
+    #[arg(long)]
+    pub project_id: Option<u64>,
+    /// Updated to-do title/content.
+    #[arg(long)]
+    pub content: Option<String>,
+    /// Updated to-do notes/description.
+    #[arg(long)]
+    pub notes: Option<String>,
+    /// Updated due date in YYYY-MM-DD format.
+    #[arg(long)]
+    pub due_on: Option<String>,
     #[arg(long)]
     pub json: bool,
 }

@@ -68,6 +68,7 @@ Useful to-do fields/params for this CLI:
 - `assignee_ids` (optional)
 - `completion_subscriber_ids` (optional multi-user "When done, notify")
 - `due_on` (CLI: `--due-on` or interactive prompt; optional `YYYY-MM-DD` date)
+- For `todo edit`, update payload can include one or more of: `content`, `description`, `due_on`.
 - `completed=true` (optional query param on list endpoint when fetching only completed items)
 - `q` (required query string for `/search.json`)
 - `type=Todo` (search filter for to-do results)
@@ -78,9 +79,13 @@ Useful to-do fields/params for this CLI:
 - Treat `todoset_id` as a required routing value discovered from the project `dock`.
 - Treat both top-level lists and groups as list-like entities (`Todolist`) but keep separate CLI commands for clarity.
 - Keep to-dos as the only task entity users can complete/uncomplete.
+- For edit flow, fetch the current item first (`GET /buckets/{project_id}/todos/{todo_id}.json`) so prompts can be pre-filled with existing values.
+- For edit update, use `PUT /buckets/{project_id}/todos/{todo_id}.json`.
+- Edit routing requires `project_id` and `todo_id` in the URL path; there is no project-agnostic edit endpoint.
 - For completion, use `POST /buckets/{project_id}/todos/{todo_id}/completion.json` (not `PUT /todos/{todo_id}.json`).
 - Completion routing requires `project_id` and `todo_id` in the URL path; there is no project-agnostic complete endpoint.
 - For text search completion UX, use account-level `GET /search.json` with `type=Todo`.
+- For text search edit UX, use account-level `GET /search.json` with `type=Todo`.
 - To scope search to one project, include `bucket_id={project_id}` in `/search.json`.
 - Map CLI `--notes` to Basecamp `description`, and CLI `--due-on` to Basecamp `due_on`.
 - There is no documented fuzzy-search toggle/parameter; rely on `/search.json` query behavior and relevance ordering.

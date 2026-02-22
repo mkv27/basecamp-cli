@@ -1,11 +1,15 @@
 # CLI Contract (To-dos Feature)
 
-This stage defines three commands:
+This stage defines four commands:
 
 ```bash
 basecamp-cli todo add
 basecamp-cli todo add "Title/content"
 basecamp-cli todo add "Title/content" --notes "Context" --due-on 2026-03-31
+basecamp-cli todo edit
+basecamp-cli todo edit "search text"
+basecamp-cli todo edit --project-id <project_id> --id <todo_id>
+basecamp-cli todo edit --project-id <project_id> --id <todo_id> --notes "Updated context"
 basecamp-cli todo complete "search text"
 basecamp-cli todo complete "search text" --project-id <project_id>
 basecamp-cli todo complete --id <todo_id> --project-id <project_id>
@@ -17,6 +21,7 @@ basecamp-cli todo re-open --id <todo_id> --project-id <project_id>
 ## Goal
 
 - Create a new Basecamp to-do with a guided interactive questionnaire.
+- Edit an existing Basecamp to-do from interactive search or direct ID mode.
 - Complete existing to-do items either from text search + multi-select or by direct ID.
 - Re-open existing completed to-do items either from text search + multi-select or by direct ID.
 
@@ -24,6 +29,7 @@ basecamp-cli todo re-open --id <todo_id> --project-id <project_id>
 
 ```bash
 basecamp-cli todo add [content] [--notes <text>] [--due-on <YYYY-MM-DD>] [--json]
+basecamp-cli todo edit [query] [--id <todo_id>] [--project-id <project_id>] [--content <text>] [--notes <text>] [--due-on <YYYY-MM-DD>] [--json]
 basecamp-cli todo complete [query] [--id <todo_id>] [--project-id <project_id>] [--json]
 basecamp-cli todo re-open [query] [--id <todo_id>] [--project-id <project_id>] [--json]
 ```
@@ -37,6 +43,19 @@ basecamp-cli todo re-open [query] [--id <todo_id>] [--project-id <project_id>] [
 `todo add` positional args:
 
 - `content` (optional): to-do title/content. If provided, skip the title prompt.
+
+`todo edit` optional flags:
+
+- `--id <todo_id>`: edit one to-do directly (skips interactive match selection).
+- `--project-id <project_id>`: scope search mode to one project; required with `--id` in direct mode.
+- `--content <text>`: set updated title/content without prompting for title.
+- `--notes <text>`: set updated notes/description without prompting for notes.
+- `--due-on <YYYY-MM-DD>`: set updated due date without prompting for due date.
+- `--json`: return machine-readable output after editing.
+
+`todo edit` positional args:
+
+- `query` (optional): text used to filter matching to-do content in interactive search mode.
 
 `todo complete` optional flags:
 
@@ -60,14 +79,17 @@ basecamp-cli todo re-open [query] [--id <todo_id>] [--project-id <project_id>] [
 
 Validation rules:
 
-- `--id` and positional `query` are mutually exclusive.
-- If `--id` is provided, `--project-id` must also be provided.
-- If `--id` is not provided, command runs search mode with interactive multi-select.
-- In search mode, `query` is required by the API. If not passed positionally, prompt for it interactively.
-- If `--due-on` is provided on `todo add`, it must be a valid `YYYY-MM-DD` calendar date.
+- On `todo complete`, `--id` and positional `query` are mutually exclusive.
+- On `todo complete`, `--project-id` is required when using `--id`.
+- On `todo complete`, if `--id` is not provided, command runs search mode with interactive multi-select.
+- On `todo edit`, `--id` and positional `query` are mutually exclusive.
+- On `todo edit`, `--project-id` is required when using `--id`.
+- On `todo edit`, if `--id` is not provided, command runs search mode with interactive single-select.
 - On `todo re-open`, `--id` and positional `query` are mutually exclusive.
 - On `todo re-open`, `--project-id` is required when using `--id`.
 - On `todo re-open`, if `--id` is not provided, command runs search mode with interactive multi-select.
+- In search mode, `query` is required by the API. If not passed positionally, prompt for it interactively.
+- If `--due-on` is provided on `todo add` or `todo edit`, it must be a valid `YYYY-MM-DD` calendar date.
 
 ## `basecamp-cli todo add`
 
@@ -101,6 +123,45 @@ Behavior:
    - `due date` (optional; from `--due-on` when provided, otherwise prompt; `YYYY-MM-DD`)
 10. Create the to-do in the resolved list/group.
 11. Print success output (human or JSON).
+
+## `basecamp-cli todo edit`
+
+Purpose:
+
+- Edit one existing to-do from either interactive text search or direct ID mode.
+
+Preconditions:
+
+- User is logged in (`basecamp-cli login` already completed).
+- Integration credentials and session tokens are available locally.
+
+Behavior:
+
+Direct mode (`--id` + `--project-id`):
+
+1. Validate that `--id` and `--project-id` are present.
+2. Fetch the current to-do payload for that specific to-do.
+3. Resolve editable inputs:
+   - `content`: use `--content` if provided; otherwise prompt with current content pre-filled.
+   - `notes`: use `--notes` if provided; otherwise prompt with current description pre-filled.
+   - `due date`: use `--due-on` if provided; otherwise prompt with current due date pre-filled.
+4. Update the to-do with the resolved values.
+5. Print success output (human or JSON).
+
+Search mode (default, without `--id`):
+
+1. Verify active auth session and selected account.
+2. Resolve search text:
+   - use positional `query` if provided
+   - otherwise ask query interactively
+3. Search via Basecamp account search endpoint:
+   - `GET /search.json?q={query}&type=Todo`
+   - if `--project-id` is provided, include `bucket_id={project_id}` to scope search.
+4. Show matching to-do results in an interactive single-select list with project context and IDs.
+5. Fetch the selected to-do payload.
+6. Resolve editable inputs with the same prompt/flag behavior as direct mode.
+7. Update the selected to-do.
+8. Print success output (human or JSON).
 
 ## `basecamp-cli todo complete`
 
@@ -139,7 +200,7 @@ Search mode (default, without `--id`):
 
 Purpose:
 
-- Re-open one completed to-do by ID.
+- Re-open existing completed to-dos from either interactive text search or direct ID mode.
 
 Preconditions:
 
@@ -182,6 +243,14 @@ Search mode (default, without `--id`):
 8. `When done, notify`: optional, multi-select.
 9. `Due date`: optional (prompt only when `--due-on` is not provided).
 
+`todo edit`:
+
+1. `Search text` (only in search mode and only if positional `query` is not provided): enter text query.
+2. `To-do` (only in search mode): single-select one matching result to edit.
+3. `Title`: editable prompt with current value pre-filled (prompt only when `--content` is not provided).
+4. `Notes`: editable prompt with current value pre-filled (prompt only when `--notes` is not provided).
+5. `Due date`: editable prompt with current value pre-filled (prompt only when `--due-on` is not provided).
+
 `todo complete` (search mode):
 
 1. `Search text` (only if positional `query` is not provided): enter text query.
@@ -206,6 +275,17 @@ Search mode (default, without `--id`):
   - `GET /buckets/{project_id}/todolists/{todolist_id}/groups.json`
 - Create todo:
   - `POST /buckets/{project_id}/todolists/{target_todolist_id}/todos.json`
+
+`todo edit`:
+
+- To-do search (account-wide):
+  - `GET /search.json?q={query}&type=Todo`
+- To-do search (scoped by project):
+  - `GET /search.json?q={query}&type=Todo&bucket_id={project_id}`
+- Fetch current to-do details:
+  - `GET /buckets/{project_id}/todos/{todo_id}.json`
+- Update to-do (direct + search modes):
+  - `PUT /buckets/{project_id}/todos/{todo_id}.json`
 
 `todo complete`:
 
@@ -242,6 +322,26 @@ Created todo "Prepare launch notes" in project "Marketing Site" / list "Launch" 
   "todolist_id": 456789123,
   "todo_id": 987654321,
   "content": "Prepare launch notes"
+}
+```
+
+`todo edit` human example:
+
+```text
+Edited todo "Prepare launch notes v2" in project "Marketing Site" (id: 987654321).
+```
+
+`todo edit` JSON example:
+
+```json
+{
+  "ok": true,
+  "mode": "direct",
+  "project_id": 123456789,
+  "todo_id": 987654321,
+  "content": "Prepare launch notes v2",
+  "description": "Updated context",
+  "due_on": "2026-04-02"
 }
 ```
 
@@ -296,6 +396,7 @@ Re-opened 2 todos (987654321 in project 123456789, 987654322 in project 45678912
 
 ## Non-Goals (This Stage)
 
-- `todo list`/`todo update` commands
+- `todo list` command
 - creating/deleting to-do lists or groups
 - bulk todo creation
+- bulk todo editing

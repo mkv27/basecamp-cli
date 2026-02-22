@@ -12,12 +12,14 @@ use std::io::{self, IsTerminal};
 
 use crate::cli::{
     Cli, Command, IntegrationArgs, IntegrationClearArgs, IntegrationCommand, IntegrationSetArgs,
-    LoginArgs, LogoutArgs, TodoAddArgs, TodoArgs, TodoCommand, TodoCompleteArgs, TodoReOpenArgs,
-    WhoamiArgs,
+    LoginArgs, LogoutArgs, TodoAddArgs, TodoArgs, TodoCommand, TodoCompleteArgs, TodoEditArgs,
+    TodoReOpenArgs, WhoamiArgs,
 };
 use crate::error::{AppError, AppResult};
 use crate::features::auth::{integration, login, logout, whoami};
-use crate::features::todos::{add as todo_add, complete as todo_complete, re_open as todo_re_open};
+use crate::features::todos::{
+    add as todo_add, complete as todo_complete, edit as todo_edit, re_open as todo_re_open,
+};
 use crate::ui::{configure_prompt_rendering, prompt_error};
 
 const DEFAULT_REDIRECT_URI: &str = "http://127.0.0.1:45455/callback";
@@ -186,6 +188,7 @@ async fn handle_whoami(args: WhoamiArgs, verbose: bool) -> AppResult<()> {
 async fn handle_todo(args: TodoArgs, verbose: bool) -> AppResult<()> {
     match args.command {
         TodoCommand::Add(args) => handle_todo_add(args, verbose).await,
+        TodoCommand::Edit(args) => handle_todo_edit(args, verbose).await,
         TodoCommand::Complete(args) => handle_todo_complete(args, verbose).await,
         TodoCommand::ReOpen(args) => handle_todo_re_open(args, verbose).await,
     }
@@ -245,6 +248,35 @@ async fn handle_todo_complete(args: TodoCompleteArgs, verbose: bool) -> AppResul
         };
         println!("  - {} {}", title, metadata.bright_black());
     }
+
+    Ok(())
+}
+
+async fn handle_todo_edit(args: TodoEditArgs, verbose: bool) -> AppResult<()> {
+    print_secret_store_location_if_verbose(verbose)?;
+    let json_output = args.json;
+    let output = todo_edit::run(args).await?;
+
+    if json_output {
+        let rendered = serde_json::to_string_pretty(&output)
+            .map_err(|err| AppError::generic(format!("Failed to render JSON output: {err}")))?;
+        println!("{rendered}");
+        return Ok(());
+    }
+
+    let project_label = output
+        .project_name
+        .as_deref()
+        .map(|project_name| format!("project \"{project_name}\""))
+        .unwrap_or_else(|| format!("project {}", output.project_id));
+
+    println!(
+        "{} \"{}\" in {} {}.",
+        "Edited todo".green(),
+        output.content,
+        project_label,
+        format!("(id: {})", output.todo_id).bright_black()
+    );
 
     Ok(())
 }

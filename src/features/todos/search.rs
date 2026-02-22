@@ -4,15 +4,17 @@ use crate::error::{AppError, AppResult};
 use crate::ui::prompt_error;
 use colored::Colorize;
 use inquire::validator::Validation;
-use inquire::{MultiSelect, Text};
+use inquire::{MultiSelect, Select, Text};
 use std::io::{self, IsTerminal};
 
 const SEARCH_PER_PAGE: u32 = 50;
 const SEARCH_MAX_PAGES: u32 = 20;
+const SELECT_HELP_MESSAGE: &str = "Type to filter, use Up/Down to move, Enter to select";
 const MULTISELECT_HELP_MESSAGE: &str = "Type to filter, use Up/Down to move, Space to select one, Right to all, Left to none, Enter to confirm";
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum TodoCompletionFilter {
+    Any,
     CompletedOnly,
     IncompleteOnly,
 }
@@ -28,6 +30,7 @@ pub(super) struct TodoMatch {
 impl TodoCompletionFilter {
     fn matches(self, completed: bool) -> bool {
         match self {
+            Self::Any => true,
             Self::CompletedOnly => completed,
             Self::IncompleteOnly => !completed,
         }
@@ -83,13 +86,7 @@ pub(super) async fn search_todos(
 }
 
 pub(super) fn prompt_select_todos(matches: &[TodoMatch]) -> AppResult<Vec<usize>> {
-    let labels: Vec<String> = matches
-        .iter()
-        .map(|todo| {
-            let project_label = format!("{} / {}", todo.project_name, todo.project_id);
-            format!("{} - {} ({})", todo.content, project_label, todo.todo_id)
-        })
-        .collect();
+    let labels = todo_labels(matches);
 
     MultiSelect::new("To-dos", labels)
         .with_help_message(MULTISELECT_HELP_MESSAGE)
@@ -102,6 +99,16 @@ pub(super) fn prompt_select_todos(matches: &[TodoMatch]) -> AppResult<Vec<usize>
                 .collect()
         })
         .map_err(|err| prompt_error("select to-dos", err))
+}
+
+pub(super) fn prompt_select_todo(matches: &[TodoMatch]) -> AppResult<usize> {
+    let labels = todo_labels(matches);
+    Select::new("To-do", labels)
+        .with_help_message(SELECT_HELP_MESSAGE)
+        .with_starting_cursor(0)
+        .raw_prompt()
+        .map(|selection| selection.index)
+        .map_err(|err| prompt_error("select to-do", err))
 }
 
 pub(super) fn print_selected_todos(matches: &[TodoMatch], selections: &[usize]) -> AppResult<()> {
@@ -117,6 +124,16 @@ pub(super) fn print_selected_todos(matches: &[TodoMatch], selections: &[usize]) 
     }
 
     Ok(())
+}
+
+fn todo_labels(matches: &[TodoMatch]) -> Vec<String> {
+    matches
+        .iter()
+        .map(|todo| {
+            let project_label = format!("{} / {}", todo.project_name, todo.project_id);
+            format!("{} - {} ({})", todo.content, project_label, todo.todo_id)
+        })
+        .collect()
 }
 
 fn to_todo_match(

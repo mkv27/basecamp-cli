@@ -1,6 +1,6 @@
 use crate::basecamp::models::{
-    CreateTodoPayload, CreatedTodo, PersonProfile, Project, ProjectPerson, TodoSearchResult,
-    Todolist,
+    CreateTodoPayload, CreatedTodo, PersonProfile, Project, ProjectPerson, Todo, TodoSearchResult,
+    Todolist, UpdateTodoPayload,
 };
 use crate::error::{
     AppError, AppResult, OAUTH_UNAUTHORIZED_RELOGIN_MESSAGE, OAuthStatusMessages,
@@ -134,6 +134,47 @@ impl BasecampClient {
 
         response.json::<CreatedTodo>().await.map_err(|err| {
             AppError::generic(format!("Failed to decode created todo response: {err}"))
+        })
+    }
+
+    pub async fn get_todo(&self, project_id: u64, todo_id: u64) -> AppResult<Todo> {
+        self.get_json(
+            &format!("buckets/{project_id}/todos/{todo_id}.json"),
+            Vec::new(),
+            "to-do details",
+            "Basecamp denied to-do details access (403 Forbidden).",
+            Some("Target project/todo was not found or is not accessible.".to_string()),
+            "Basecamp to-do details request failed with status",
+        )
+        .await
+    }
+
+    pub async fn update_todo(
+        &self,
+        project_id: u64,
+        todo_id: u64,
+        payload: &UpdateTodoPayload,
+    ) -> AppResult<Todo> {
+        let response = self
+            .send_put_json(
+                &format!("buckets/{project_id}/todos/{todo_id}.json"),
+                payload,
+                "todo update",
+            )
+            .await?;
+
+        self.ensure_success_status(
+            response.status(),
+            OAuthStatusMessages::new(
+                OAUTH_UNAUTHORIZED_RELOGIN_MESSAGE,
+                "Basecamp denied todo update (403 Forbidden).",
+            ),
+            Some("Target project/todo was not found or is not accessible."),
+            "Basecamp todo update failed with status",
+        )?;
+
+        response.json::<Todo>().await.map_err(|err| {
+            AppError::generic(format!("Failed to decode updated todo response: {err}"))
         })
     }
 
@@ -289,6 +330,24 @@ impl BasecampClient {
     {
         self.http
             .post(self.account_url(path))
+            .bearer_auth(&self.access_token)
+            .json(payload)
+            .send()
+            .await
+            .map_err(|err| AppError::generic(format!("Failed to request {request_context}: {err}")))
+    }
+
+    async fn send_put_json<P>(
+        &self,
+        path: &str,
+        payload: &P,
+        request_context: &str,
+    ) -> AppResult<Response>
+    where
+        P: Serialize,
+    {
+        self.http
+            .put(self.account_url(path))
             .bearer_auth(&self.access_token)
             .json(payload)
             .send()

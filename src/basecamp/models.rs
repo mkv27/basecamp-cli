@@ -43,6 +43,18 @@ pub struct CreatedTodo {
     pub content: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct Todo {
+    #[serde(deserialize_with = "deserialize_id")]
+    pub id: u64,
+    #[serde(default)]
+    pub content: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub due_on: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct CreateTodoPayload {
     pub content: String,
@@ -53,6 +65,16 @@ pub struct CreateTodoPayload {
     pub assignee_ids: Option<Vec<u64>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub completion_subscriber_ids: Option<Vec<u64>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub due_on: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UpdateTodoPayload {
+    pub content: String,
+    #[serde(rename = "description")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub due_on: Option<String>,
 }
